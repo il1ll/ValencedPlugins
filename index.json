@@ -1,0 +1,154 @@
+{
+  "format": 1,
+  "name": "ValencedPlugins",
+  "description": "plugins for valenced made by coder.gg :)",
+  "plugins": {
+    "com.coder.copy-proxy-link": {
+      "name": "Copy Proxy Link",
+      "description": "Adds a button to the message long-press menu that copies the attachment's proxy URL.",
+      "author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+      "icon": "LinkIcon",
+      "channels": {
+        "latest": "2.0.0"
+      },
+      "versions": {
+        "2.0.0": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.copy-proxy-link@2.0.0.zip",
+          "sha256": "37a2de6595d7a545e7df97f8a8052cf0986deb4a75251deb6f9e7acdec3517da",
+          "size": 1331,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
+    "com.coder.hypesquad-switcher": {
+      "name": "HypeSquad Switcher",
+      "description": "Add, change, or remove your HypeSquad badge from the plugin settings.",
+      "author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+      "icon": "AwardIcon",
+      "channels": {
+        "latest": "3.5.0"
+      },
+      "versions": {
+        "3.5.0": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.hypesquad-switcher@3.5.0.zip",
+          "sha256": "384178bd7dc15b366f2a2bfc11831c258eb9a52ee44575dd38d4308deb90444d",
+          "size": 1565,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
+    "com.coder.keyword-tracker": {
+      "name": "Keyword Tracker",
+      "description": "Track keywords and get notified when they are mentioned.",
+      "author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+      "icon": "ChatCheckIcon",
+      "channels": {
+        "latest": "7.5.3"
+      },
+      "versions": {
+        "7.5.3": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.keyword-tracker@7.5.3.zip",
+          "sha256": "e1f7a1b3215fff2dfce717877906594649644790fe0780e94714ee5ed53f3d05",
+          "size": 4666,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
+    "com.coder.silent-edit": {
+      "name": "Silent Edit",
+      "description": "Edit messages without showing (edited) on the message.",
+      "author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+      "icon": "PencilIcon",
+      "channels": {
+        "latest": "5.5.0"
+      },
+      "versions": {
+        "5.5.0": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.silent-edit@5.5.0.zip",
+          "sha256": "bf16c6f7b02608728ce3602009825f7efc743e07be50ae2f48284cdac25c5133",
+          "size": 2241,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
+    "com.coder.silent-leave": {
+      "name": "Silent Leave",
+      "description": "Adds a Leave Silently button to the group DM long-press menu.",
+      "author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+      "icon": "DoorExitIcon",
+      "channels": {
+        "latest": "3.3.3"
+      },
+      "versions": {
+        "3.3.3": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.silent-leave@3.3.3.zip",
+          "sha256": "9c1ca1bd0f89bd1dea2ca66162d1d5af4910f943e1d199fa911ce62641c5f6c0",
+          "size": 2128,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
+    "com.coder.usernotify": {
+      "name": "UserNotify",
+      "description": "Get notified when a user is typing, messages, or changes status. Tap the notification to open the chat or the user's profile. Requires a mutual server.",
+      "author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+      "contributors": [
+        "cywrx <858031702927736874>"
+      ],
+      "icon": "UserCircleIcon",
+      "channels": {
+        "latest": "5.3.0"
+      },
+      "versions": {
+        "5.3.0": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.usernotify@5.3.0.zip",
+          "sha256": "337a1fa659f66cc713b0c51e9bda31aaaef1b6a2f4ecdf1737cd50ed63be5296",
+          "size": 4002,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    }
+  }
+}
