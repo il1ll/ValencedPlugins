@@ -1,0 +1,20 @@
+{
+	"format": 1,
+	"id": "com.coder.hypesquad-switcher",
+	"name": "HypeSquad Switcher",
+	"description": "Add, change, or remove your HypeSquad badge from the plugin settings.",
+	"icon": "AwardIcon",
+	"author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+	"version": "3.5.0",
+	"dependencies": {
+		"valenced.api": {
+			"version": ">=1 <2"
+		},
+		"discord": {
+			"version": "*"
+		}
+	},
+	"dist": {
+		"script": "index.js"
+	}
+}

@@ -1,0 +1,20 @@
+{
+	"format": 1,
+	"id": "com.coder.keyword-tracker",
+	"name": "Keyword Tracker",
+	"description": "Track keywords and get notified when they are mentioned.",
+	"icon": "ChatCheckIcon",
+	"author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+	"version": "7.5.3",
+	"dependencies": {
+		"valenced.api": {
+			"version": ">=1 <2"
+		},
+		"discord": {
+			"version": "*"
+		}
+	},
+	"dist": {
+		"script": "index.js"
+	}
+}

@@ -1,0 +1,20 @@
+{
+	"format": 1,
+	"id": "com.coder.copy-proxy-link",
+	"name": "Copy Proxy Link",
+	"description": "Adds a button to the message long-press menu that copies the attachment's proxy URL.",
+	"icon": "LinkIcon",
+	"author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+	"version": "2.0.0",
+	"dependencies": {
+		"valenced.api": {
+			"version": ">=1 <2"
+		},
+		"discord": {
+			"version": "*"
+		}
+	},
+	"dist": {
+		"script": "index.js"
+	}
+}

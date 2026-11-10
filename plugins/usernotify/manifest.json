@@ -1,0 +1,21 @@
+{
+	"format": 1,
+	"id": "com.coder.usernotify",
+	"name": "UserNotify",
+	"description": "Get notified when a user is typing, messages, or changes status. Tap the notification to open the chat or the user's profile. Requires a mutual server.",
+	"icon": "UserCircleIcon",
+	"author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+	"contributors": ["cywrx <858031702927736874>"],
+	"version": "5.3.0",
+	"dependencies": {
+		"valenced.api": {
+			"version": ">=1 <2"
+		},
+		"discord": {
+			"version": "*"
+		}
+	},
+	"dist": {
+		"script": "index.js"
+	}
+}
