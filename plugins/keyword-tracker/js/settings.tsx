@@ -4,7 +4,12 @@ import { ToastActionCreators } from '@valenced/discord/actions'
 import { Design } from '@valenced/discord/design'
 import { Clipboard } from '@valenced/externals/react-native-clipboard'
 import { useState } from 'react'
-import { Image, ScrollView, TouchableOpacity } from 'react-native'
+import {
+	Image,
+	TextInput as RNTextInput,
+	ScrollView,
+	TouchableOpacity,
+} from 'react-native'
 import { defaults } from './storage'
 import type { JsonStorage } from '@valenced/json-storage'
 import type { KeywordTrackerSettings } from './storage'
@@ -27,6 +32,43 @@ function StoredInput({
 			onChange={(v: string) => {
 				setText(v)
 				onChange(v)
+			}}
+		/>
+	)
+}
+
+function KeywordInput({
+	value,
+	onChange,
+}: {
+	value: string
+	onChange: (value: string) => void
+}) {
+	const { TextArea } = Design as any
+
+	if (TextArea)
+		return (
+			<TextArea
+				placeholder="Enter keyword or phrase..."
+				value={value}
+				onChange={onChange}
+			/>
+		)
+
+	return (
+		<RNTextInput
+			placeholder="Enter keyword or phrase..."
+			placeholderTextColor="#949ba4"
+			value={value}
+			onChangeText={onChange}
+			multiline
+			textAlignVertical="top"
+			style={{
+				minHeight: 80,
+				padding: 12,
+				borderRadius: 8,
+				color: '#ffffff',
+				backgroundColor: 'rgba(128,128,128,0.15)',
 			}}
 		/>
 	)
@@ -64,8 +106,7 @@ export default function Settings({
 }: {
 	api: { jsonStorage: JsonStorage<KeywordTrackerSettings> }
 }) {
-	const { Stack, TableRowGroup, TableRow, TableSwitchRow, TextInput, Text } =
-		Design as any
+	const { Stack, TableRowGroup, TableRow, TableSwitchRow, Text } = Design as any
 	const storage = api.jsonStorage
 	const s = { ...defaults, ...storage.use() }
 	const set = (partial: Partial<KeywordTrackerSettings>) => {
@@ -144,14 +185,7 @@ export default function Settings({
 			<Page>
 				<TableRowGroup title="Add Keyword">
 					<Stack spacing={4} style={{ padding: 10 }}>
-						<TextInput
-							placeholder="Enter keyword or phrase..."
-							value={newKeyword}
-							onChange={setNewKeyword}
-							isClearable
-							onSubmitEditing={addKeyword}
-							returnKeyType="done"
-						/>
+						<KeywordInput value={newKeyword} onChange={setNewKeyword} />
 					</Stack>
 					<TableRow
 						label="Add Keyword"
@@ -252,7 +286,22 @@ export default function Settings({
 							set(
 								v
 									? { trackServers: v }
-									: { trackServers: v, ignoreServersEnabled: false },
+									: {
+											trackServers: v,
+											ignoreServersEnabled: false,
+											serverWhitelistEnabled: false,
+										},
+							),
+					)}
+					{switchRow(
+						'Server Whitelist',
+						'Only detect messages from the servers you list',
+						s.serverWhitelistEnabled,
+						v =>
+							set(
+								v
+									? { serverWhitelistEnabled: v, trackServers: true }
+									: { serverWhitelistEnabled: v },
 							),
 					)}
 					{switchRow(
@@ -274,6 +323,13 @@ export default function Settings({
 						v => set({ trackChannelsEnabled: v }),
 					)}
 				</TableRowGroup>
+
+				{s.serverWhitelistEnabled &&
+					idInput(
+						'Whitelisted Server IDs',
+						'whitelistedServerIds',
+						'1205207689832038522, 1196075698301968455',
+					)}
 
 				{s.trackChannelsEnabled &&
 					idInput(
@@ -328,6 +384,12 @@ export default function Settings({
 					)}
 
 				<TableRowGroup title="Matching Rules">
+					{switchRow(
+						'Ignore Symbols',
+						'Detect keywords hidden with symbols and numbers',
+						s.ignoreSymbols,
+						v => set({ ignoreSymbols: v }),
+					)}
 					{switchRow(
 						'Match Whole Words',
 						'Match keyword as a standalone word only, not inside another word',

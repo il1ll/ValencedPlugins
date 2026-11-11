@@ -24,6 +24,9 @@ export interface KeywordTrackerSettings {
 	ignoreUsersEnabled: boolean
 	ignoredUserIds: string
 	showInSettings: boolean
+	serverWhitelistEnabled: boolean
+	whitelistedServerIds: string
+	ignoreSymbols: boolean
 }
 
 export const defaults: KeywordTrackerSettings = {
@@ -52,6 +55,9 @@ export const defaults: KeywordTrackerSettings = {
 	ignoreUsersEnabled: false,
 	ignoredUserIds: '',
 	showInSettings: true,
+	serverWhitelistEnabled: false,
+	whitelistedServerIds: '',
+	ignoreSymbols: false,
 }
 
 export const splitIds = (value: string | undefined) =>
@@ -59,3 +65,14 @@ export const splitIds = (value: string | undefined) =>
 		.split(',')
 		.map(id => id.trim())
 		.filter(Boolean)
+
+const SYMBOLS = '|()\\/;!?\'"*#$-1234567890@_&+,.~`•√π÷×§∆£¢€¥^°={}%©®™✓[]<>:'
+
+const SYMBOL_PATTERN = new RegExp(
+	`[${[...new Set(SYMBOLS)]
+		.map(char => char.replace(/[\\\]^-]/g, '\\$&'))
+		.join('')}]`,
+	'g',
+)
+
+export const stripSymbols = (value: string) => value.replace(SYMBOL_PATTERN, '')

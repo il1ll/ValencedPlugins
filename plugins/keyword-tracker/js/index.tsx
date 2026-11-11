@@ -10,7 +10,7 @@ import {
 import { lookupModule } from '@valenced/modules/finders'
 import { withProps } from '@valenced/modules/finders/filters'
 import Settings from './settings'
-import { defaults, splitIds } from './storage'
+import { defaults, splitIds, stripSymbols } from './storage'
 import type { PluginApi } from '@valenced/plugins/types'
 import type { KeywordTrackerSettings } from './storage'
 
@@ -27,10 +27,14 @@ function KeywordTrackerScreen() {
 const escapeRegex = (value: string) =>
 	value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-function matchKeyword(s: KeywordTrackerSettings, fullContent: string) {
+function matchKeyword(s: KeywordTrackerSettings, originalContent: string) {
+	const fullContent = s.ignoreSymbols
+		? stripSymbols(originalContent)
+		: originalContent
+
 	for (const kw of s.keywords) {
 		let content = fullContent
-		let testKw = kw
+		let testKw = s.ignoreSymbols ? stripSymbols(kw) || kw : kw
 
 		if (!s.caseSensitive) {
 			content = content.toLowerCase()
@@ -149,6 +153,13 @@ function onMessage(payload: any) {
 			c.guild_id &&
 			s.ignoreServersEnabled &&
 			splitIds(s.ignoredServerIds).includes(c.guild_id)
+		)
+			return
+
+		if (
+			c.guild_id &&
+			s.serverWhitelistEnabled &&
+			!splitIds(s.whitelistedServerIds).includes(c.guild_id)
 		)
 			return
 
