@@ -3,6 +3,30 @@
   "name": "ValencedPlugins",
   "description": "plugins for valenced made by coder.gg :)",
   "plugins": {
+    "com.coder.changedate": {
+      "name": "Message Time Changer",
+      "description": "long press a message > change date (client side)",
+      "author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+      "icon": "ClockIcon",
+      "channels": {
+        "latest": "3.5.5"
+      },
+      "versions": {
+        "3.5.5": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.changedate@3.5.5.zip",
+          "sha256": "70e49aeb4a56a3d2a7c09039de11185d8ce881844e28356d77df46104a07f080",
+          "size": 11144,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
     "com.coder.copy-proxy-link": {
       "name": "Copy Proxy Link",
       "description": "Adds a button to the message long-press menu that copies the attachment's proxy URL.",
@@ -16,6 +40,30 @@
           "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.copy-proxy-link@2.0.0.zip",
           "sha256": "37a2de6595d7a545e7df97f8a8052cf0986deb4a75251deb6f9e7acdec3517da",
           "size": 1331,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
+    "com.coder.fakemutedeafen": {
+      "name": "Fake Mute & Deafen",
+      "description": "look muted or deafened to others while you can still talk and hear.",
+      "author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+      "icon": "HeadphonesSlashIcon",
+      "channels": {
+        "latest": "3.3.3"
+      },
+      "versions": {
+        "3.3.3": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.fakemutedeafen@3.3.3.zip",
+          "sha256": "f528e8430b7adca1e7ca3cbdfa6e3079d433446446449db11e61033e3d744db0",
+          "size": 2347,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
