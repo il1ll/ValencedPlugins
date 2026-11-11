@@ -1,0 +1,20 @@
+{
+	"format": 1,
+	"id": "com.coder.fakemutedeafen",
+	"name": "Fake Mute & Deafen",
+	"description": "look muted or deafened to others while you can still talk and hear.",
+	"icon": "HeadphonesSlashIcon",
+	"author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+	"version": "3.3.3",
+	"dependencies": {
+		"valenced.api": {
+			"version": ">=1 <2"
+		},
+		"discord": {
+			"version": "*"
+		}
+	},
+	"dist": {
+		"script": "index.js"
+	}
+}
