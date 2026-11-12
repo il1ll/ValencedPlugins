@@ -232,6 +232,30 @@
         }
       }
     },
+    "com.coder.spotifycontrols": {
+      "name": "Spotify Controls",
+      "description": "Control Spotify from the 'You Bar' with lyrics",
+      "author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
+      "icon": "MusicIcon",
+      "channels": {
+        "latest": "3.5.3"
+      },
+      "versions": {
+        "3.5.3": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.spotifycontrols@3.5.3.zip",
+          "sha256": "a60bcb29bad1e87b7ed4985d92c8418820a0a03a66b88147597531c6e7338b56",
+          "size": 29451,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
     "com.coder.usernotify": {
       "name": "UserNotify",
       "description": "Get notified when a user is typing, messages, or changes status. Tap the notification to open the chat or the user's profile. Requires a mutual server.",
