@@ -216,7 +216,7 @@ function PlayerOptions() {
     </Design.TableRadioGroup>
   );
 }
-function Settings() {
+function Settings({ storage }: { storage: { set: (patch: Partial<Preferences>) => unknown } }) {
   const state = useSyncExternalStore(subscribe, getState);
   const lyricsKey = useSyncExternalStore(subscribeUi, getLyricsKey);
   return (
@@ -251,7 +251,11 @@ function Settings() {
           <Design.TextInput
             label="Spicy Lyrics key"
             value={lyricsKey}
-            onChange={(value: string) => setLyricsKey(value.trim())}
+            onChange={(value: string) => {
+              const next = value.trim();
+              setLyricsKey(next);
+              void storage.set({ lyricsKey: next } as Partial<Preferences>);
+            }}
             placeholder="sl_sk_***"
             maxLength={200}
           />
@@ -279,5 +283,7 @@ export default plugin<{ jsonStorage: Preferences }>({
     cleanup(startIntegration((error) => instance.reportError(error)));
     if (instance.startedLate) instance.requireReload();
   },
-  SettingsComponent: Settings,
+  SettingsComponent: (props: { storage: { set: (patch: Partial<Preferences>) => unknown } }) => {
+    return <Settings storage={props.storage} />;
+  },
 });
