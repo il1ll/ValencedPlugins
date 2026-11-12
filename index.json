@@ -105,13 +105,26 @@
       "author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
       "icon": "ChatCheckIcon",
       "channels": {
-        "latest": "7.5.3"
+        "latest": "7.5.5"
       },
       "versions": {
         "7.5.3": {
           "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.keyword-tracker@7.5.3.zip",
           "sha256": "e1f7a1b3215fff2dfce717877906594649644790fe0780e94714ee5ed53f3d05",
           "size": 4666,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "7.5.5": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.keyword-tracker@7.5.5.zip",
+          "sha256": "6a687c6bb487332ac8246c2df8749bfb3602fe66d632cca7a0ddc7fc0f7639a2",
+          "size": 5095,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
