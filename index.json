@@ -136,6 +136,54 @@
         }
       }
     },
+    "com.coder.layoutconverter": {
+      "name": "Layout Converter",
+      "description": "Fixes text typed in the wrong keyboard layout (Arabic and Russian)... Long-press a message > Convert",
+      "author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+      "icon": "LanguageIcon",
+      "channels": {
+        "latest": "2.5.1"
+      },
+      "versions": {
+        "2.5.1": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.layoutconverter@2.5.1.zip",
+          "sha256": "62f97fb4603044b7d6e3179fc1c15743bd0841dd355e65f16713cf4efb3a350c",
+          "size": 3557,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
+    "com.coder.mutebubble": {
+      "name": "Mute Bubble",
+      "description": "A floating mute button over other apps while you're in a call and Discord is in the background",
+      "author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+      "icon": "MicrophoneSlashIcon",
+      "channels": {
+        "latest": "3.3.0"
+      },
+      "versions": {
+        "3.3.0": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.mutebubble@3.3.0.zip",
+          "sha256": "5e7e109256754ab68d431c027382a1dfa774c9ecf782994aa18b44518202d54a",
+          "size": 14871,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
     "com.coder.silent-edit": {
       "name": "Silent Edit",
       "description": "Edit messages without showing (edited) on the message.",
