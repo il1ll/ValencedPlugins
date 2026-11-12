@@ -4,7 +4,7 @@
 	"name": "Message Time Changer",
 	"description": "long press a message > change date (client side)",
 	"icon": "ClockIcon",
-	"author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+	"author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
 	"version": "3.5.5",
 	"dependencies": {
 		"valenced.api": {

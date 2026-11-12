@@ -4,7 +4,7 @@
 	"name": "Copy Proxy Link",
 	"description": "Adds a button to the message long-press menu that copies the attachment's proxy URL.",
 	"icon": "LinkIcon",
-	"author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+	"author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
 	"version": "2.0.0",
 	"dependencies": {
 		"valenced.api": {

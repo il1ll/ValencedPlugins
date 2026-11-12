@@ -4,7 +4,7 @@
 	"name": "Mute Bubble",
 	"description": "A floating mute button over other apps while you're in a call and Discord is in the background",
 	"icon": "MicrophoneSlashIcon",
-	"author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+	"author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
 	"version": "3.3.0",
 	"dependencies": {
 		"valenced.api": {

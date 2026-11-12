@@ -4,7 +4,7 @@
 	"name": "Layout Converter",
 	"description": "Fixes text typed in the wrong keyboard layout (Arabic and Russian)... Long-press a message > Convert",
 	"icon": "LanguageIcon",
-	"author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+	"author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
 	"version": "2.5.1",
 	"dependencies": {
 		"valenced.api": {
