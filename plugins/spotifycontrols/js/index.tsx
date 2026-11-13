@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useState, useSyncExternalStore } from 'react';
 import { ScrollView, View } from 'react-native';
 import { Design } from '@valenced/discord/design';
 import { startSpotify, getState, subscribe, reconnect } from './spotify';
@@ -9,22 +9,20 @@ import { getAssetIdByName } from '@valenced/assets';
 import {
   bindUi,
   DEFAULT_LYRICS,
+  loadStoredPreferences,
   DEFAULT_PREFERENCES,
+  getLyricsKey,
+  getLyricsPrefs,
+  getProgressStyle,
   resetLyricsPrefs,
+  setLyricsKey,
   setLyricsPref,
   setProgressStyle,
+  subscribeUi,
   type LyricsPrefs,
   type Preferences,
   type ProgressStyle,
 } from './ui';
-
-type Api = {
-  jsonStorage: {
-    cache: Partial<Preferences>;
-    use: () => Partial<Preferences> | undefined;
-    set: (patch: Partial<Preferences>) => unknown;
-  };
-};
 
 function icon(...names: string[]) {
   for (const name of names) {
@@ -35,7 +33,6 @@ function icon(...names: string[]) {
   }
   return undefined;
 }
-
 function SliderRow({
   label,
   hint,
@@ -91,16 +88,8 @@ function SliderRow({
     </View>
   );
 }
-
-function LyricsOptions({
-  prefs,
-  onChange,
-  onReset,
-}: {
-  prefs: LyricsPrefs;
-  onChange: <K extends keyof LyricsPrefs>(key: K, value: LyricsPrefs[K]) => void;
-  onReset: () => void;
-}) {
+function LyricsOptions() {
+  const prefs = useSyncExternalStore(subscribeUi, getLyricsPrefs);
   const toggle = (
     key: { [K in keyof LyricsPrefs]: LyricsPrefs[K] extends boolean ? K : never }[keyof LyricsPrefs],
     label: string,
@@ -112,7 +101,7 @@ function LyricsOptions({
       label={label}
       subLabel={subLabel}
       value={prefs[key]}
-      onValueChange={(value: boolean) => onChange(key, value)}
+      onValueChange={(value: boolean) => setLyricsPref(key, value)}
     />
   );
   return (
@@ -169,7 +158,7 @@ function LyricsOptions({
           max={1.5}
           step={0.05}
           format={(v) => Math.round(v * 100) + '%'}
-          onChange={(v) => onChange('textScale', v)}
+          onChange={(v) => setLyricsPref('textScale', v)}
           leading={icon('LettersIcon', 'TextIcon')}
         />
         <SliderRow
@@ -179,7 +168,7 @@ function LyricsOptions({
           max={0.7}
           step={0.02}
           format={(v) => Math.round(v * 100) + '%'}
-          onChange={(v) => onChange('backgroundDim', v)}
+          onChange={(v) => setLyricsPref('backgroundDim', v)}
           leading={icon('PaintbrushThinIcon', 'PaintPaletteIcon')}
           hint="Darker keeps white text readable on bright covers."
         />
@@ -199,26 +188,20 @@ function LyricsOptions({
           icon={icon('UndoIcon', 'RefreshIcon')}
           label="Reset lyrics options"
           subLabel="Back to the defaults. Your Spicy Lyrics key is kept."
-          onPress={onReset}
+          onPress={resetLyricsPrefs}
           arrow
         />
       </Design.TableRowGroup>
     </>
   );
 }
-
-function PlayerOptions({
-  style,
-  onChange,
-}: {
-  style: ProgressStyle;
-  onChange: (value: ProgressStyle) => void;
-}) {
+function PlayerOptions() {
+  const style = useSyncExternalStore(subscribeUi, getProgressStyle);
   return (
     <Design.TableRadioGroup
       title="Player progress bar"
       value={style}
-      onChange={onChange}
+      onChange={(value: ProgressStyle) => setProgressStyle(value)}
     >
       <Design.TableRadioRow
         icon={icon('ListViewIcon', 'ListBulletsIcon')}
@@ -235,60 +218,9 @@ function PlayerOptions({
     </Design.TableRadioGroup>
   );
 }
-
-function mergeLyrics(partial: Partial<LyricsPrefs> | undefined): LyricsPrefs {
-  const next: LyricsPrefs = { ...DEFAULT_LYRICS };
-  if (!partial) return next;
-  for (const key of Object.keys(DEFAULT_LYRICS) as (keyof LyricsPrefs)[]) {
-    const value = partial[key];
-    if (
-      typeof value === typeof DEFAULT_LYRICS[key] &&
-      (typeof value !== 'number' || Number.isFinite(value))
-    ) {
-      (next as any)[key] = value;
-    }
-  }
-  return next;
-}
-
-function Settings({ api }: { api: Api }) {
+function Settings() {
   const state = useSyncExternalStore(subscribe, getState);
-  const stored = api.jsonStorage.use() ?? {};
-
-  const prefs: LyricsPrefs = mergeLyrics(stored.lyrics as Partial<LyricsPrefs> | undefined);
-  const progressStyle: ProgressStyle = stored.progressStyle === 'wave' ? 'wave' : 'bar';
-
-  const storedKey = typeof stored.lyricsKey === 'string' ? stored.lyricsKey : '';
-  const [keyDraft, setKeyDraft] = useState<string>(storedKey);
-  const dirtyRef = useRef(false);
-
-  useEffect(() => {
-    if (!dirtyRef.current) setKeyDraft(storedKey);
-  }, [storedKey]);
-
-  const commitKey = () => {
-    dirtyRef.current = false;
-    const next = keyDraft.trim();
-    if (next === storedKey) return;
-    void api.jsonStorage.set({ lyricsKey: next });
-  };
-
-  const updateLyrics = <K extends keyof LyricsPrefs>(key: K, value: LyricsPrefs[K]) => {
-    const next: LyricsPrefs = { ...prefs, [key]: value };
-    setLyricsPref(key, value);
-    void api.jsonStorage.set({ lyrics: next });
-  };
-
-  const resetLyrics = () => {
-    resetLyricsPrefs();
-    void api.jsonStorage.set({ lyrics: { ...DEFAULT_LYRICS } });
-  };
-
-  const updateProgressStyle = (value: ProgressStyle) => {
-    setProgressStyle(value);
-    void api.jsonStorage.set({ progressStyle: value });
-  };
-
+  const lyricsKey = useSyncExternalStore(subscribeUi, getLyricsKey);
   return (
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 36, gap: 16 }}>
       <Design.TableRowGroup title="Spotify connection">
@@ -310,23 +242,18 @@ function Settings({ api }: { api: Api }) {
       <Design.TableRowGroup title="Preview">
         <Player preview />
       </Design.TableRowGroup>
-      <PlayerOptions style={progressStyle} onChange={updateProgressStyle} />
+      <PlayerOptions />
       <Design.TableRowGroup title="Lyrics">
         <Design.TableRow
           icon={icon('KeyIcon', 'LockIcon')}
           label="Spicy Lyrics key"
-          subLabel={storedKey ? 'Saved' : 'Needed for fullscreen lyrics'}
+          subLabel={lyricsKey ? 'Saved' : 'Needed for fullscreen lyrics'}
         />
         <View style={{ padding: 12, gap: 8 }}>
           <Design.TextInput
             label="Spicy Lyrics key"
-            value={keyDraft}
-            onChange={(value: string) => {
-              dirtyRef.current = true;
-              setKeyDraft(value);
-            }}
-            onBlur={commitKey}
-            onSubmitEditing={commitKey}
+            value={lyricsKey}
+            onChange={(value: string) => setLyricsKey(value.trim())}
             placeholder="sl_sk_***"
             maxLength={200}
           />
@@ -337,32 +264,60 @@ function Settings({ api }: { api: Api }) {
           </Design.Text>
         </View>
       </Design.TableRowGroup>
-      <LyricsOptions prefs={prefs} onChange={updateLyrics} onReset={resetLyrics} />
+      <LyricsOptions />
     </ScrollView>
   );
 }
-
 export default plugin<{ jsonStorage: Preferences }>({
   jsonStorage: { load: true, default: DEFAULT_PREFERENCES },
-  start(api) {
-    const { cleanup, plugin: instance, jsonStorage } = api as unknown as {
-      cleanup: (fn: () => void) => void;
-      plugin: {
-        reportError: (e: unknown) => void;
-        startedLate: boolean;
-        requireReload: () => void;
-      };
-      jsonStorage: Api['jsonStorage'];
+  start({ cleanup, plugin: instance, jsonStorage }) {
+    let ready = jsonStorage.loaded === true;
+    let active = true;
+    let pending: Partial<Preferences> = {};
+    let pendingLyrics: Partial<LyricsPrefs> = {};
+    const write = (change: Partial<Preferences>) => {
+      jsonStorage.set(change).catch((error: unknown) => instance.reportError(error));
     };
-
     cleanup(
-      bindUi(
-        jsonStorage.cache as (Partial<Preferences> & { collapsed?: boolean }) | undefined,
-        (change) => {
-          void jsonStorage.set(change);
-        },
-      ),
+      bindUi(ready ? (jsonStorage.cache as Partial<Preferences>) : undefined, (change) => {
+        if (ready) return write(change);
+        const { lyrics, ...rest } = change;
+        pending = { ...pending, ...rest };
+        if (lyrics) {
+          for (const key of Object.keys(lyrics) as (keyof LyricsPrefs)[]) {
+            if (lyrics[key] === DEFAULT_LYRICS[key]) delete pendingLyrics[key];
+            else (pendingLyrics as any)[key] = lyrics[key];
+          }
+        }
+      }),
     );
+    cleanup(() => {
+      active = false;
+    });
+    if (!ready) {
+      const finish = (stored: Partial<Preferences> | undefined) => {
+        if (!active) return;
+        const changedLyrics = Object.keys(pendingLyrics).length > 0;
+        loadStoredPreferences({
+          ...stored,
+          ...pending,
+          lyrics: { ...DEFAULT_LYRICS, ...stored?.lyrics, ...pendingLyrics },
+        });
+        ready = true;
+        const change: Partial<Preferences> = { ...pending };
+        if (changedLyrics) change.lyrics = getLyricsPrefs();
+        if (Object.keys(change).length) write(change);
+        pending = {};
+        pendingLyrics = {};
+      };
+      jsonStorage.get().then(
+        (stored) => finish(stored as Partial<Preferences>),
+        (error: unknown) => {
+          instance.reportError(error);
+          finish(undefined);
+        },
+      );
+    }
     cleanup(watchSvg());
     cleanup(startSpotify());
     cleanup(startIntegration((error) => instance.reportError(error)));

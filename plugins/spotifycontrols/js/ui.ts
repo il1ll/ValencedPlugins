@@ -99,10 +99,8 @@ export function setMode(next: DockMode) {
 }
 export const stepMode = (direction: 1 | -1) =>
   setMode(MODES[Math.max(0, Math.min(MODES.length - 1, MODES.indexOf(mode) + direction))]);
-export function bindUi(
-  initial: (Partial<Preferences> & { collapsed?: boolean }) | undefined,
-  save: (change: Partial<Preferences>) => void,
-) {
+type StoredPreferences = Partial<Preferences> & { collapsed?: boolean };
+function readStored(initial: StoredPreferences | undefined) {
   if (typeof initial?.lyricsKey === 'string') lyricsKey = initial.lyricsKey;
   if (initial?.progressStyle && PROGRESS_STYLES.includes(initial.progressStyle))
     progressStyle = initial.progressStyle;
@@ -122,6 +120,13 @@ export function bindUi(
     initial?.mode ??
     (typeof initial?.collapsed === 'boolean' ? (initial.collapsed ? 'collapsed' : 'expanded') : undefined);
   if (stored) apply(stored);
+}
+export function loadStoredPreferences(initial: StoredPreferences | undefined) {
+  readStored(initial);
+  for (const fn of listeners) fn();
+}
+export function bindUi(initial: StoredPreferences | undefined, save: (change: Partial<Preferences>) => void) {
+  readStored(initial);
   persist = save;
   return () => {
     if (persist === save) persist = null;
