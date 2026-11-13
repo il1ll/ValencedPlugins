@@ -1,4 +1,4 @@
-import React, { useState, useSyncExternalStore } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { Design } from '@valenced/discord/design';
 import { startSpotify, getState, subscribe, reconnect } from './spotify';
@@ -8,14 +8,11 @@ import { watchSvg } from './icons';
 import { getAssetIdByName } from '@valenced/assets';
 import {
   bindUi,
+  DEFAULT_LYRICS,
   DEFAULT_PREFERENCES,
-  getLyricsPrefs,
-  getProgressStyle,
   resetLyricsPrefs,
-  setLyricsKey,
   setLyricsPref,
   setProgressStyle,
-  subscribeUi,
   type LyricsPrefs,
   type Preferences,
   type ProgressStyle,
@@ -95,8 +92,15 @@ function SliderRow({
   );
 }
 
-function LyricsOptions() {
-  const prefs = useSyncExternalStore(subscribeUi, getLyricsPrefs);
+function LyricsOptions({
+  prefs,
+  onChange,
+  onReset,
+}: {
+  prefs: LyricsPrefs;
+  onChange: <K extends keyof LyricsPrefs>(key: K, value: LyricsPrefs[K]) => void;
+  onReset: () => void;
+}) {
   const toggle = (
     key: { [K in keyof LyricsPrefs]: LyricsPrefs[K] extends boolean ? K : never }[keyof LyricsPrefs],
     label: string,
@@ -108,7 +112,7 @@ function LyricsOptions() {
       label={label}
       subLabel={subLabel}
       value={prefs[key]}
-      onValueChange={(value: boolean) => setLyricsPref(key, value)}
+      onValueChange={(value: boolean) => onChange(key, value)}
     />
   );
   return (
@@ -165,7 +169,7 @@ function LyricsOptions() {
           max={1.5}
           step={0.05}
           format={(v) => Math.round(v * 100) + '%'}
-          onChange={(v) => setLyricsPref('textScale', v)}
+          onChange={(v) => onChange('textScale', v)}
           leading={icon('LettersIcon', 'TextIcon')}
         />
         <SliderRow
@@ -175,7 +179,7 @@ function LyricsOptions() {
           max={0.7}
           step={0.02}
           format={(v) => Math.round(v * 100) + '%'}
-          onChange={(v) => setLyricsPref('backgroundDim', v)}
+          onChange={(v) => onChange('backgroundDim', v)}
           leading={icon('PaintbrushThinIcon', 'PaintPaletteIcon')}
           hint="Darker keeps white text readable on bright covers."
         />
@@ -195,7 +199,7 @@ function LyricsOptions() {
           icon={icon('UndoIcon', 'RefreshIcon')}
           label="Reset lyrics options"
           subLabel="Back to the defaults. Your Spicy Lyrics key is kept."
-          onPress={resetLyricsPrefs}
+          onPress={onReset}
           arrow
         />
       </Design.TableRowGroup>
@@ -203,13 +207,18 @@ function LyricsOptions() {
   );
 }
 
-function PlayerOptions() {
-  const style = useSyncExternalStore(subscribeUi, getProgressStyle);
+function PlayerOptions({
+  style,
+  onChange,
+}: {
+  style: ProgressStyle;
+  onChange: (value: ProgressStyle) => void;
+}) {
   return (
     <Design.TableRadioGroup
       title="Player progress bar"
       value={style}
-      onChange={(value: ProgressStyle) => setProgressStyle(value)}
+      onChange={onChange}
     >
       <Design.TableRadioRow
         icon={icon('ListViewIcon', 'ListBulletsIcon')}
@@ -227,10 +236,58 @@ function PlayerOptions() {
   );
 }
 
+function mergeLyrics(partial: Partial<LyricsPrefs> | undefined): LyricsPrefs {
+  const next: LyricsPrefs = { ...DEFAULT_LYRICS };
+  if (!partial) return next;
+  for (const key of Object.keys(DEFAULT_LYRICS) as (keyof LyricsPrefs)[]) {
+    const value = partial[key];
+    if (
+      typeof value === typeof DEFAULT_LYRICS[key] &&
+      (typeof value !== 'number' || Number.isFinite(value))
+    ) {
+      (next as any)[key] = value;
+    }
+  }
+  return next;
+}
+
 function Settings({ api }: { api: Api }) {
   const state = useSyncExternalStore(subscribe, getState);
   const stored = api.jsonStorage.use() ?? {};
-  const lyricsKey: string = typeof stored.lyricsKey === 'string' ? stored.lyricsKey : '';
+
+  const prefs: LyricsPrefs = mergeLyrics(stored.lyrics as Partial<LyricsPrefs> | undefined);
+  const progressStyle: ProgressStyle = stored.progressStyle === 'wave' ? 'wave' : 'bar';
+
+  const storedKey = typeof stored.lyricsKey === 'string' ? stored.lyricsKey : '';
+  const [keyDraft, setKeyDraft] = useState<string>(storedKey);
+  const dirtyRef = useRef(false);
+
+  useEffect(() => {
+    if (!dirtyRef.current) setKeyDraft(storedKey);
+  }, [storedKey]);
+
+  const commitKey = () => {
+    dirtyRef.current = false;
+    const next = keyDraft.trim();
+    if (next === storedKey) return;
+    void api.jsonStorage.set({ lyricsKey: next });
+  };
+
+  const updateLyrics = <K extends keyof LyricsPrefs>(key: K, value: LyricsPrefs[K]) => {
+    const next: LyricsPrefs = { ...prefs, [key]: value };
+    setLyricsPref(key, value);
+    void api.jsonStorage.set({ lyrics: next });
+  };
+
+  const resetLyrics = () => {
+    resetLyricsPrefs();
+    void api.jsonStorage.set({ lyrics: { ...DEFAULT_LYRICS } });
+  };
+
+  const updateProgressStyle = (value: ProgressStyle) => {
+    setProgressStyle(value);
+    void api.jsonStorage.set({ progressStyle: value });
+  };
 
   return (
     <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 36, gap: 16 }}>
@@ -253,21 +310,23 @@ function Settings({ api }: { api: Api }) {
       <Design.TableRowGroup title="Preview">
         <Player preview />
       </Design.TableRowGroup>
-      <PlayerOptions />
+      <PlayerOptions style={progressStyle} onChange={updateProgressStyle} />
       <Design.TableRowGroup title="Lyrics">
         <Design.TableRow
           icon={icon('KeyIcon', 'LockIcon')}
           label="Spicy Lyrics key"
-          subLabel={lyricsKey ? 'Saved' : 'Needed for fullscreen lyrics'}
+          subLabel={storedKey ? 'Saved' : 'Needed for fullscreen lyrics'}
         />
         <View style={{ padding: 12, gap: 8 }}>
           <Design.TextInput
             label="Spicy Lyrics key"
-            value={lyricsKey}
+            value={keyDraft}
             onChange={(value: string) => {
-              const next = value.trim();
-              setLyricsKey(next);
+              dirtyRef.current = true;
+              setKeyDraft(value);
             }}
+            onBlur={commitKey}
+            onSubmitEditing={commitKey}
             placeholder="sl_sk_***"
             maxLength={200}
           />
@@ -278,7 +337,7 @@ function Settings({ api }: { api: Api }) {
           </Design.Text>
         </View>
       </Design.TableRowGroup>
-      <LyricsOptions />
+      <LyricsOptions prefs={prefs} onChange={updateLyrics} onReset={resetLyrics} />
     </ScrollView>
   );
 }
