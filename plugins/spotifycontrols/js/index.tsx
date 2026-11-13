@@ -22,6 +22,8 @@ import {
   type ProgressStyle,
 } from './ui';
 
+let keyStore: { set: (patch: Partial<Preferences>) => unknown } | null = null;
+
 function icon(...names: string[]) {
   for (const name of names) {
     try {
@@ -216,7 +218,7 @@ function PlayerOptions() {
     </Design.TableRadioGroup>
   );
 }
-function Settings({ storage }: { storage: { set: (patch: Partial<Preferences>) => unknown } }) {
+function Settings() {
   const state = useSyncExternalStore(subscribe, getState);
   const lyricsKey = useSyncExternalStore(subscribeUi, getLyricsKey);
   return (
@@ -254,7 +256,9 @@ function Settings({ storage }: { storage: { set: (patch: Partial<Preferences>) =
             onChange={(value: string) => {
               const next = value.trim();
               setLyricsKey(next);
-              void storage.set({ lyricsKey: next } as Partial<Preferences>);
+              try {
+                void keyStore?.set({ lyricsKey: next } as Partial<Preferences>);
+              } catch {}
             }}
             placeholder="sl_sk_***"
             maxLength={200}
@@ -273,6 +277,7 @@ function Settings({ storage }: { storage: { set: (patch: Partial<Preferences>) =
 export default plugin<{ jsonStorage: Preferences }>({
   jsonStorage: { load: true, default: DEFAULT_PREFERENCES },
   start({ cleanup, plugin: instance, jsonStorage }) {
+    keyStore = jsonStorage as unknown as { set: (patch: Partial<Preferences>) => unknown };
     cleanup(
       bindUi(jsonStorage.cache as (Partial<Preferences> & { collapsed?: boolean }) | undefined, (change) => {
         void jsonStorage.set(change);
@@ -281,9 +286,10 @@ export default plugin<{ jsonStorage: Preferences }>({
     cleanup(watchSvg());
     cleanup(startSpotify());
     cleanup(startIntegration((error) => instance.reportError(error)));
+    cleanup(() => {
+      keyStore = null;
+    });
     if (instance.startedLate) instance.requireReload();
   },
-  SettingsComponent: (props: { storage: { set: (patch: Partial<Preferences>) => unknown } }) => {
-    return <Settings storage={props.storage} />;
-  },
+  SettingsComponent: Settings,
 });
