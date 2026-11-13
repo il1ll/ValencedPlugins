@@ -238,7 +238,7 @@
       "author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
       "icon": "MusicIcon",
       "channels": {
-        "latest": "3.5.6"
+        "latest": "3.5.7"
       },
       "versions": {
         "3.5.3": {
@@ -284,6 +284,19 @@
           "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.spotifycontrols@3.5.6.zip",
           "sha256": "abc27fdf9b9a350d0c0ba513cb36f874c6bb8b56e00b73427e49ad88b2fe8499",
           "size": 29481,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "3.5.7": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.spotifycontrols@3.5.7.zip",
+          "sha256": "13d8767903fdbe8a48da146514539ca4a1632e26f4d9341628e78c62de659b44",
+          "size": 29702,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
