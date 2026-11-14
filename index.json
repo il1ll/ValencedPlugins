@@ -160,6 +160,30 @@
         }
       }
     },
+    "com.coder.motionblur": {
+      "name": "Motion Blur",
+      "description": "Adds motion blur while scrolling chats, lists and pages.",
+      "author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
+      "icon": "SparklesIcon",
+      "channels": {
+        "latest": "1.0.0"
+      },
+      "versions": {
+        "1.0.0": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.motionblur@1.0.0.zip",
+          "sha256": "95b3ab4999a45d207f25b5dd4863bd71c2c61c3aa935410f924f216e40f4da5a",
+          "size": 16105,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
     "com.coder.mutebubble": {
       "name": "Mute Bubble",
       "description": "A floating mute button over other apps while you're in a call and Discord is in the background",
