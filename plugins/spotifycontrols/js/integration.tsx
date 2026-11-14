@@ -3,6 +3,7 @@ import { Animated, BackHandler, PanResponder, Pressable, StyleSheet, View } from
 import { getModules, lookupModule } from '@valenced/modules/finders';
 import { createFilterGenerator, FilterScopes, withProps } from '@valenced/modules/finders/filters';
 import { Design } from '@valenced/discord/design';
+import { instead } from '@valenced/patcher';
 import { Tokens } from '@valenced/discord/common/tokens';
 import { Player } from './player';
 import { LyricsHost } from './lyricsView';
@@ -184,7 +185,7 @@ function DockCard({ bar }: { bar: React.ReactNode }) {
       ? {
           left: layout.x,
           width: layout.width,
-          bottom: Math.max(0, containerHeight - layout.y - layout.height),
+          bottom: Math.max(0, -(layout.y + layout.height)),
           barHeight: layout.height,
         }
       : { left: look.margin, right: look.margin, bottom: look.bottom, barHeight: look.barHeight };
@@ -355,13 +356,15 @@ function DockCard({ bar }: { bar: React.ReactNode }) {
       )}
       <MotionView
         pointerEvents={expandedMode ? 'none' : 'box-none'}
-        style={[StyleSheet.absoluteFill, { opacity: mounted ? barOpacity : 1 }]}
+        style={[StyleSheet.absoluteFill, { justifyContent: 'flex-end', opacity: mounted ? barOpacity : 1 }]}
         onLayout={(event) => {
           const value = event.nativeEvent.layout.height;
           setContainerHeight((previous) => (Math.abs(previous - value) < 0.5 ? previous : value));
         }}
       >
-        {measuredBar}
+        <View pointerEvents="box-none" style={{ height: 0, alignSelf: 'stretch' }}>
+          {measuredBar}
+        </View>
       </MotionView>
     </>
   );
@@ -374,6 +377,7 @@ function Dock({ original }: { original: React.ReactNode }) {
     </View>
   );
 }
+const OUTERMOST = 1000;
 export function startIntegration(report: (error: unknown) => void) {
   reportError = report;
   let lastTrack: string | undefined;
@@ -400,21 +404,23 @@ export function startIntegration(report: (error: unknown) => void) {
           : 'default';
     if (!owner || typeof owner[key] !== 'function' || seen.has(owner)) return;
     seen.add(owner);
-    const original = owner[key];
-    const wrapped = function (this: unknown, ...args: any[]) {
-      const tree = Reflect.apply(original, this, args) as React.ReactNode;
-      if (!active) return tree;
-      return (
-        <Guard original={tree}>
-          <Dock original={tree} />
-        </Guard>
-      );
-    };
     try {
-      owner[key] = wrapped;
-      undo.push(() => {
-        if (owner[key] === wrapped) owner[key] = original;
-      });
+      undo.push(
+        instead(
+          owner,
+          key,
+          function (this: unknown, args: any[], original: (...args: any[]) => unknown) {
+            const tree = Reflect.apply(original, this, args) as React.ReactNode;
+            if (!active) return tree;
+            return (
+              <Guard original={tree}>
+                <Dock original={tree} />
+              </Guard>
+            );
+          },
+          { priority: OUTERMOST },
+        ),
+      );
     } catch (error) {
       report(error);
     }
