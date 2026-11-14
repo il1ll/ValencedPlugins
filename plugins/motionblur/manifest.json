@@ -1,0 +1,24 @@
+{
+	"format": 1,
+	"id": "com.coder.motionblur",
+	"name": "Motion Blur",
+	"description": "Adds motion blur while scrolling chats, lists and pages.",
+	"icon": "SparklesIcon",
+	"author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
+	"version": "1.0.0",
+	"dependencies": {
+		"valenced.api": {
+			"version": ">=1 <2"
+		},
+		"discord": {
+			"version": "*"
+		}
+	},
+	"dist": {
+		"script": "index.js",
+		"android": {
+			"path": "plugin.jar",
+			"class": "com.coder.motionblur.MotionBlur"
+		}
+	}
+}
