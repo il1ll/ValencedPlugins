@@ -347,6 +347,30 @@
         }
       }
     },
+    "com.coder.streambutton": {
+      "name": "stream button",
+      "description": "Adds a Share Screen button to the voice call notification.",
+      "author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
+      "icon": "ScreenArrowIcon",
+      "channels": {
+        "latest": "1.2.0"
+      },
+      "versions": {
+        "1.2.0": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.streambutton@1.2.0.zip",
+          "sha256": "41bcc10aff8df3c0fb76b7c11356e0d08d054429b8f7bb5a0282ce1cd82aae4c",
+          "size": 13290,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
     "com.coder.usernotify": {
       "name": "UserNotify",
       "description": "Get notified when a user is typing, messages, or changes status. Tap the notification to open the chat or the user's profile. Requires a mutual server.",
