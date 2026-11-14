@@ -163,16 +163,29 @@
     "com.coder.mutebubble": {
       "name": "Mute Bubble",
       "description": "A floating mute button over other apps while you're in a call and Discord is in the background",
-      "author": "coder.gg <1099039269391171765> (https://github.com/il1ll \"GitHub\")",
+      "author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
       "icon": "MicrophoneSlashIcon",
       "channels": {
-        "latest": "3.3.0"
+        "latest": "3.3.1"
       },
       "versions": {
         "3.3.0": {
           "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.mutebubble@3.3.0.zip",
           "sha256": "5e7e109256754ab68d431c027382a1dfa774c9ecf782994aa18b44518202d54a",
           "size": 14871,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "3.3.1": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.mutebubble@3.3.1.zip",
+          "sha256": "c217c30626ade7fab6b74d3bf93ea6755038e0a1f63527c76c273a678bbae626",
+          "size": 15460,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
