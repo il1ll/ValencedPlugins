@@ -142,10 +142,14 @@ private class BubbleController(private val context: Context) {
         }
     }
 
+    private var attached = false
+
     fun attach(activity: Activity?) {
         if (activity != null && !activity.isFinishing && isProcessForeground()) {
             startedActivities.add(activity)
         }
+        if (attached) return
+        attached = true
         (context.applicationContext as? Application)?.registerActivityLifecycleCallbacks(callbacks)
     }
 
@@ -172,7 +176,16 @@ private class BubbleController(private val context: Context) {
             Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
             Uri.parse("package:${context.packageName}"),
         ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        context.startActivity(intent)
+        try {
+            context.startActivity(intent)
+        } catch (_: Throwable) {
+            context.startActivity(
+                Intent(
+                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.parse("package:${context.packageName}"),
+                ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
     }
 
     fun setState(inCall: Boolean, isMuted: Boolean, isEnabled: Boolean) {
@@ -312,12 +325,31 @@ private class BubbleController(private val context: Context) {
 
 private var controller: BubbleController? = null
 
+private fun currentApplication(): Context? =
+    try {
+        Class.forName("android.app.ActivityThread")
+            .getMethod("currentApplication")
+            .invoke(null) as? Context
+    } catch (_: Throwable) {
+        null
+    }
+
+private fun ensureController(context: Context? = null): BubbleController? {
+    controller?.let { return it }
+    val appContext = (context ?: currentApplication())?.applicationContext ?: return null
+    return BubbleController(appContext).also {
+        controller = it
+        it.attach(null)
+    }
+}
+
 @Suppress("UNUSED")
 val muteBubble = plugin {
     start {
+        ensureController()
+
         withAppContext { context ->
-            val bubble = BubbleController(context.applicationContext)
-            controller = bubble
+            val bubble = ensureController(context) ?: return@withAppContext
             withAppActivity { activity -> bubble.attach(activity) }
         }
 
@@ -325,21 +357,21 @@ val muteBubble = plugin {
             val inCall = args.getOrNull(0) as? Boolean ?: false
             val muted = args.getOrNull(1) as? Boolean ?: false
             val enabled = args.getOrNull(2) as? Boolean ?: true
-            controller?.setState(inCall, muted, enabled)
+            ensureController()?.setState(inCall, muted, enabled)
             true
         }
 
         registerNativeAsyncMethod("com.coder.mutebubble.nextAction") {
-            val bubble = controller ?: return@registerNativeAsyncMethod "none"
+            val bubble = ensureController() ?: return@registerNativeAsyncMethod "none"
             withTimeoutOrNull(WAIT_MS) { bubble.actions.receive() } ?: "none"
         }
 
         registerNativeAsyncMethod("com.coder.mutebubble.canDrawOverlays") {
-            controller?.canDraw() ?: false
+            ensureController()?.canDraw() ?: false
         }
 
         registerNativeAsyncMethod("com.coder.mutebubble.openOverlaySettings") {
-            val bubble = controller ?: return@registerNativeAsyncMethod false
+            val bubble = ensureController() ?: return@registerNativeAsyncMethod false
             Handler(Looper.getMainLooper()).post {
                 try {
                     bubble.openPermissionSettings()
