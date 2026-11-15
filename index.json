@@ -506,6 +506,33 @@
         }
       }
     },
+    "com.coder.textanimation": {
+      "name": "Text Animation",
+      "description": "Animates letters as you type and delete, with a smooth gliding cursor and arabic support!",
+      "author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
+      "contributors": [
+        "bleelblep"
+      ],
+      "icon": "TextIcon",
+      "channels": {
+        "latest": "0.3.1"
+      },
+      "versions": {
+        "0.3.1": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.textanimation@0.3.1.zip",
+          "sha256": "f8205c601e04f36a20f8f8dd3d34ab848c96bf3c444333c4d73b6d04b5aace69",
+          "size": 34395,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
     "com.coder.usernotify": {
       "name": "UserNotify",
       "description": "Get notified when a user is typing, messages, or changes status. Tap the notification to open the chat or the user's profile. Requires a mutual server.",
