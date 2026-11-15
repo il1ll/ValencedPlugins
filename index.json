@@ -112,6 +112,30 @@
         }
       }
     },
+    "com.coder.fakenickname": {
+      "name": "Fake Nickname",
+      "description": "Change anyone's nickname without being firends.",
+      "author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
+      "icon": "PencilIcon",
+      "channels": {
+        "latest": "1.1.5"
+      },
+      "versions": {
+        "1.1.5": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.fakenickname@1.1.5.zip",
+          "sha256": "665b98dc2ce7090fe023ac3f3cd9e764a61b94ae154bb4574294cb624642852b",
+          "size": 4093,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
     "com.coder.filepreview": {
       "name": "File Preview",
       "description": "A Preview button on .zip and text files.",
