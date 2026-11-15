@@ -314,7 +314,7 @@
       "author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
       "icon": "MicrophoneSlashIcon",
       "channels": {
-        "latest": "3.3.1"
+        "latest": "3.3.3"
       },
       "versions": {
         "3.3.0": {
@@ -334,6 +334,19 @@
           "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.mutebubble@3.3.1.zip",
           "sha256": "c217c30626ade7fab6b74d3bf93ea6755038e0a1f63527c76c273a678bbae626",
           "size": 15460,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "3.3.3": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.mutebubble@3.3.3.zip",
+          "sha256": "67b49d90c9f939e9b6499088524d7c674c0994f4e8a69b2569d40f8073c296d9",
+          "size": 15913,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
