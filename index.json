@@ -33,13 +33,26 @@
       "author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
       "icon": "LockIcon",
       "channels": {
-        "latest": "3.5.0"
+        "latest": "3.5.5"
       },
       "versions": {
         "3.5.0": {
           "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.chatlock@3.5.0.zip",
           "sha256": "2d0d6a2d33b5faa0bb97c57c30f542ee237c15cdf9ed85e113ea1959d2244cf5",
           "size": 28933,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "3.5.5": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.chatlock@3.5.5.zip",
+          "sha256": "6feeb878cb70b8df42d5439f82051d32380929e1b28a4a5bc6e7b3d158d8ef4d",
+          "size": 29491,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
