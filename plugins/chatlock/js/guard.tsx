@@ -78,6 +78,7 @@ function confirmed(title: string, description: string, action: () => unknown) {
 export function patchGuard(cleanup: (fn: () => void) => void) {
 	cleanup(
 		afterJSX(Design.ActionSheet as ComponentType<any>, element => {
+			if (!element || typeof element !== 'object') return element
 			const sheet = element as Element
 			if (!ownsPlugin(sheet.props.children)) return element
 			return cloneElement(
@@ -92,6 +93,7 @@ export function patchGuard(cleanup: (fn: () => void) => void) {
 
 	cleanup(
 		afterJSX(Design.IconButton as ComponentType<any>, element => {
+			if (!element || typeof element !== 'object') return element
 			const button = element as Element
 			if (button.props.label !== STOP_LABEL || !inOptions()) return element
 			const onPress = button.props.onPress as
@@ -111,6 +113,7 @@ export function patchGuard(cleanup: (fn: () => void) => void) {
 
 	cleanup(
 		afterJSX(FormSwitch as ComponentType<any>, element => {
+			if (!element || typeof element !== 'object') return element
 			const toggle = element as Element
 			if (toggle.key !== PLUGIN_ID) return element
 			const onValueChange = toggle.props.onValueChange as

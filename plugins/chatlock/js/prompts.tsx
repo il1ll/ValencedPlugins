@@ -1,6 +1,6 @@
 import { AlertActionCreators } from '@valenced/discord/actions'
 import { Design, FormSwitch } from '@valenced/discord/design'
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { useState, useSyncExternalStore } from 'react'
 import { View } from 'react-native'
 import {
 	clearRecovery,
@@ -113,9 +113,7 @@ function UnlockAlert({
 	const [error, setError] = useState<string>()
 	const [busy, setBusy] = useState(false)
 	const [attempts, setAttempts] = useState(failures)
-	const started = useRef(false)
 	const device = allowDevice && fingerprintAllowed(settings)
-	const deviceFirst = settings.firstMethod === 'fingerprint'
 	const recovery =
 		recoveryReady && settings.recovery && !!settings.recoveryQuestion
 
@@ -138,12 +136,6 @@ function UnlockAlert({
 		void confirmDevice(title).then(ok => {
 			if (ok) finish()
 		})
-
-	useEffect(() => {
-		if (!device || !deviceFirst || started.current) return
-		started.current = true
-		useDevice()
-	}, [])
 
 	const submitPassword = () => {
 		if (busy || !value) return
@@ -301,7 +293,7 @@ function UnlockAlert({
 							setError(undefined)
 						}}
 						error={error}
-						autoFocus={!device || !deviceFirst}
+						autoFocus
 					/>
 				</Stack>
 			}
@@ -350,6 +342,12 @@ export async function authenticate(
 	const settings = read()
 	const allowDevice = fingerprintAllowed(settings) && (await deviceAvailable())
 	if (!(await hasPassword())) return allowDevice ? confirmDevice(title) : false
+	if (allowDevice && settings.firstMethod === 'fingerprint') {
+		if (await confirmDevice(title)) {
+			failures = 0
+			return true
+		}
+	}
 	const recoveryReady = settings.recovery && (await hasRecovery())
 	return prompt<boolean>(
 		done => (

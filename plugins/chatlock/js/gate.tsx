@@ -1,10 +1,11 @@
 import { getAssetIdByName } from '@valenced/assets'
 import { Tokens } from '@valenced/discord/common/tokens'
 import { Design } from '@valenced/discord/design'
+import { getStore } from '@valenced/discord/flux'
 import { getModuleWithImportedPath } from '@valenced/discord/utils/modules/finders'
 import { ReactNavigationNative } from '@valenced/externals/react-navigation'
 import { lookupModuleWithImportedPath } from '@valenced/discord/utils/modules/finders'
-import { instead } from '@valenced/patcher'
+import { after, instead } from '@valenced/patcher'
 import { useEffect, useSyncExternalStore } from 'react'
 import { authenticate } from './prompts'
 import {
@@ -22,6 +23,8 @@ import type { ReactNode } from 'react'
 const GATE_PATH = 'modules/chat/native/useChannelContentGate.tsx'
 const ROUTER_PATH = 'modules/routing/router_utils.tsx'
 const LOCK_KIND = 'CHAT_LOCK'
+const TRANSITION_PATH = 'modules/routing/transitionToChannel.tsx'
+const ME = '@me'
 
 let useStyles:
 	| (() => {
@@ -159,20 +162,37 @@ function channelFromPath(path: unknown) {
 }
 
 const pending = new Set<string>()
+const requested = new Set<string>()
+let goToDMs: (() => void) | undefined
+let redirecting = false
+
+export function forgetRequest(channelId: string) {
+	requested.delete(channelId)
+}
+
+function leaveToDMs() {
+	if (redirecting || !goToDMs) return
+	redirecting = true
+	try {
+		goToDMs()
+	} finally {
+		redirecting = false
+	}
+}
 
 function beforeOpen(channelId: string | undefined, proceed: () => unknown) {
-	if (
-		read().gateScreen ||
-		!channelId ||
-		!isProtected(channelId) ||
-		isOpen(channelId)
-	)
+	if (!channelId || !isProtected(channelId) || isOpen(channelId))
 		return proceed()
+	if (!requested.has(channelId)) return leaveToDMs()
+	if (read().gateScreen) return proceed()
 	if (pending.has(channelId)) return
 	pending.add(channelId)
 	void authenticate('Unlock Chat')
 		.then(ok => {
-			if (!ok) return
+			if (!ok) {
+				requested.delete(channelId)
+				return
+			}
 			markUnlocked(channelId)
 			proceed()
 		})
@@ -189,7 +209,11 @@ function patchRouter(router: any, cleanup: (fn: () => void) => void) {
 					)
 				}),
 			)
-	if (typeof router?.transitionToGuild === 'function')
+	if (typeof router?.transitionToGuild === 'function') {
+		goToDMs = () => router.transitionToGuild(ME)
+		cleanup(() => {
+			goToDMs = undefined
+		})
 		cleanup(
 			instead(
 				router,
@@ -203,9 +227,123 @@ function patchRouter(router: any, cleanup: (fn: () => void) => void) {
 				},
 			),
 		)
+	}
+}
+
+function markRequests(cleanup: (fn: () => void) => void) {
+	cleanup(
+		getModuleWithImportedPath<any>(TRANSITION_PATH, module => {
+			if (typeof module?.transitionToChannel !== 'function') return
+			cleanup(
+				instead(
+					module,
+					'transitionToChannel',
+					function (this: unknown, args, original) {
+						if (typeof args[0] === 'string') requested.add(args[0] as string)
+						return Reflect.apply(original, this, args)
+					},
+				),
+			)
+		}),
+	)
+}
+
+const REMEMBERED_GETTERS = [
+	'getChannelId',
+	'getLastSelectedChannelId',
+	'getMostRecentSelectedTextChannelId',
+]
+
+function forgetProtected(cleanup: (fn: () => void) => void) {
+	cleanup(
+		getStore<any>('SelectedChannelStore', store => {
+			const target = store as any
+			const current = () => target.getCurrentlySelectedChannelId?.()
+			for (const key of REMEMBERED_GETTERS)
+				if (typeof target[key] === 'function')
+					cleanup(
+						after(target, key, (result: unknown) =>
+							typeof result === 'string' &&
+							isProtected(result) &&
+							!isOpen(result) &&
+							result !== current()
+								? null
+								: result,
+						),
+					)
+		}),
+	)
+}
+
+type GateHandler = (
+	thisArg: unknown,
+	args: unknown[],
+	original: (...args: unknown[]) => unknown,
+) => unknown
+
+interface GateBridge {
+	handler: GateHandler
+	installed: boolean
+}
+
+const BRIDGE_KEY = '__comCoderChatLockGate'
+
+const idleSubscribe = () => () => {}
+const idleSnapshot = () => false
+
+const passthroughGate: GateHandler = (thisArg, args, original) => {
+	const result = Reflect.apply(original, thisArg, args)
+	const id = (args[1] as { id?: string } | undefined)?.id
+	useSyncExternalStore(idleSubscribe, idleSnapshot)
+	useEffect(() => {}, [id])
+	return result
+}
+
+const activeGate: GateHandler = (thisArg, args, original) => {
+	const result = Reflect.apply(original, thisArg, args)
+	const id = (args[1] as { id?: string } | undefined)?.id
+	const locked = useSyncExternalStore(subscribe, () => {
+		getSnapshot()
+		return !!id && isProtected(id) && !isOpen(id)
+	})
+	useEffect(
+		() => () => {
+			if (id) relock(id)
+		},
+		[id],
+	)
+	if (locked) return { kind: LOCK_KIND, guildId: args[0], channelId: id }
+	return result
+}
+
+function gateBridge(): GateBridge {
+	const scope = globalThis as unknown as Record<string, GateBridge | undefined>
+	scope[BRIDGE_KEY] ??= { handler: passthroughGate, installed: false }
+	return scope[BRIDGE_KEY]!
+}
+
+function installGateHook(gate: any, cleanup: (fn: () => void) => void) {
+	const bridge = gateBridge()
+	bridge.handler = activeGate
+	cleanup(() => {
+		bridge.handler = passthroughGate
+	})
+	if (bridge.installed) return
+	bridge.installed = true
+	instead(
+		gate,
+		'useChannelContentGate',
+		function (this: unknown, args, original) {
+			return gateBridge().handler(this, args, original)
+		},
+	)
 }
 
 export function patchGate(cleanup: (fn: () => void) => void) {
+	forgetProtected(cleanup)
+	markRequests(cleanup)
+	cleanup(() => requested.clear())
+
 	cleanup(
 		getModuleWithImportedPath<any>(ROUTER_PATH, router =>
 			patchRouter(router, cleanup),
@@ -215,30 +353,7 @@ export function patchGate(cleanup: (fn: () => void) => void) {
 	cleanup(
 		getModuleWithImportedPath<any>(GATE_PATH, gate => {
 			if (typeof gate?.useChannelContentGate === 'function')
-				cleanup(
-					instead(
-						gate,
-						'useChannelContentGate',
-						function (this: unknown, args, original) {
-							const result = Reflect.apply(original, this, args)
-							const channel = args[1] as { id?: string } | undefined
-							const id = channel?.id
-							const locked = useSyncExternalStore(subscribe, () => {
-								getSnapshot()
-								return !!id && isProtected(id) && !isOpen(id)
-							})
-							useEffect(
-								() => () => {
-									if (id) relock(id)
-								},
-								[id],
-							)
-							if (locked)
-								return { kind: LOCK_KIND, guildId: args[0], channelId: id }
-							return result
-						},
-					),
-				)
+				installGateHook(gate, cleanup)
 			if (typeof gate?.renderChannelContentGate === 'function')
 				cleanup(
 					instead(

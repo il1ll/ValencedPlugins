@@ -1,6 +1,6 @@
 import { getStore } from '@valenced/discord/flux'
 import { AppState } from 'react-native'
-import { patchGate } from './gate'
+import { forgetRequest, patchGate } from './gate'
 import { patchGuard } from './guard'
 import { patchHidden } from './hidden'
 import { patchNotifications } from './notifications'
@@ -48,7 +48,10 @@ export default plugin<{ jsonStorage: LockSettings }>({
 					if (next === current) return
 					const previous = current
 					current = next
-					if (previous) relock(previous)
+					if (previous) {
+						relock(previous)
+						forgetRequest(previous)
+					}
 					if (!next || !isHidden(next)) endHiddenSession()
 				}
 				selected.addChangeListener(onChange)

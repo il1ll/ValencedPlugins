@@ -9,12 +9,7 @@ import { getModules } from '@valenced/modules/finders'
 import { withName } from '@valenced/modules/finders/filters'
 import { instead } from '@valenced/patcher'
 import { afterJSX } from '@valenced/react/jsx-runtime'
-import {
-	cloneElement,
-	createContext,
-	useContext,
-	useSyncExternalStore,
-} from 'react'
+import { cloneElement, useSyncExternalStore } from 'react'
 import { authenticate, chooseKeyword, ensurePassword } from './prompts'
 import {
 	getChannel,
@@ -44,8 +39,6 @@ interface SheetTarget {
 }
 
 type Element = ReactElement<{ children?: ReactNode }>
-
-const SheetContext = createContext<SheetTarget | undefined>(undefined)
 
 export const toast = (text: string, ok = true) =>
 	ToastActionCreators.open('CHAT_LOCK', {
@@ -138,23 +131,36 @@ const isRowGroup = (element: any) => {
 
 function withRows(sheet: Element, target: SheetTarget): Element {
 	const { ActionSheetRow } = Design
-	const children = [sheet.props.children].flat(Infinity).filter(Boolean)
+	const children = sheet.props.children
 	const group = (
 		<ActionSheetRow.Group key="chat-lock" hasIcons>
 			<LockRow key="chat-lock-lock" id={target.id} onClose={target.onClose} />
 			<HideRow key="chat-lock-hide" id={target.id} onClose={target.onClose} />
 		</ActionSheetRow.Group>
 	)
-	const index = children.findIndex(isRowGroup)
-	children.splice(index === -1 ? 0 : index, 0, group)
-	return cloneElement(sheet, undefined, ...children)
+	const next =
+		insertGroup(children, group) ??
+		(Array.isArray(children) ? [group, ...children] : [group, children])
+	return cloneElement(sheet, { children: next })
 }
 
-function readTarget(): SheetTarget | undefined {
-	try {
-		return useContext(SheetContext)
-	} catch {
-		return undefined
+function insertGroup(
+	node: ReactNode,
+	group: ReactNode,
+): ReactNode[] | undefined {
+	if (!Array.isArray(node)) return
+	const index = node.findIndex(isRowGroup)
+	if (index !== -1) {
+		const copy = [...node]
+		copy.splice(index, 0, group)
+		return copy
+	}
+	for (let i = 0; i < node.length; i++) {
+		const inner = insertGroup(node[i], group)
+		if (inner === undefined) continue
+		const copy = [...node]
+		copy[i] = inner
+		return copy
 	}
 }
 
@@ -176,16 +182,49 @@ function render(
 	try {
 		const tree = Reflect.apply(Sheet, undefined, args) as ReactNode
 		if (!target) return tree
-		return <SheetContext.Provider value={target}>{tree}</SheetContext.Provider>
+		return withInnerTarget(tree)
 	} finally {
 		rendering = previous
 	}
 }
 
+const innerWrappers = new WeakMap<
+	(...args: any[]) => unknown,
+	(...args: any[]) => unknown
+>()
+
+function wrapInner(type: (...args: any[]) => unknown) {
+	let wrapper = innerWrappers.get(type)
+	if (wrapper) return wrapper
+	wrapper = function (this: unknown, ...args: any[]) {
+		const previous = rendering
+		rendering = targetOf(args[0] as SheetProps | undefined) ?? previous
+		try {
+			return Reflect.apply(type, this, args)
+		} finally {
+			rendering = previous
+		}
+	}
+	Object.defineProperty(wrapper, 'name', { value: type.name })
+	innerWrappers.set(type, wrapper)
+	return wrapper
+}
+
+function withInnerTarget(tree: ReactNode): ReactNode {
+	const element = tree as ReactElement<Record<string, unknown>> | null
+	if (!element || typeof element !== 'object') return tree
+	const type = element.type as unknown
+	if (typeof type !== 'function' || type === Design.ActionSheet) return tree
+	if (/^class\s/.test(Function.prototype.toString.call(type))) return tree
+	const Inner = wrapInner(type as (...args: any[]) => unknown) as FC<any>
+	return <Inner key={element.key ?? undefined} {...element.props} />
+}
+
 export function patchSheets(cleanup: (fn: () => void) => void) {
 	cleanup(
 		afterJSX(Design.ActionSheet as ComponentType<any>, element => {
-			const target = rendering ?? readTarget()
+			if (!element || typeof element !== 'object') return element
+			const target = rendering
 			if (!target) return element
 			return withRows(element as Element, target)
 		}),
