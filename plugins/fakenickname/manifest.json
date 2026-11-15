@@ -1,0 +1,20 @@
+{
+	"format": 1,
+	"id": "com.coder.fakenickname",
+	"name": "Fake Nickname",
+	"description": "Change anyone's nickname without being firends.",
+	"icon": "PencilIcon",
+	"author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
+	"version": "1.1.5",
+	"dependencies": {
+		"valenced.api": {
+			"version": ">=1 <2"
+		},
+		"discord": {
+			"version": "*"
+		}
+	},
+	"dist": {
+		"script": "index.js"
+	}
+}
