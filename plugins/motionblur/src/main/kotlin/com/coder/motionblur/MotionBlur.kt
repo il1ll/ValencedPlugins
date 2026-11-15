@@ -21,6 +21,7 @@ import app.valenced.plugins.plugin
 import app.valenced.xposed.api.registerNativeAsyncMethod
 import java.lang.ref.WeakReference
 import java.lang.reflect.Method
+import java.util.Collections
 import java.util.IdentityHashMap
 import kotlin.math.abs
 import kotlin.math.exp
@@ -151,7 +152,7 @@ private fun spills(view: View): Boolean {
     if (view !is ViewGroup) return false
     for (index in 0 until view.childCount) {
         val child = view.getChildAt(index) ?: continue
-        if (child.visibility != View.VISIBLE) continue
+        if (child.visibility != View.VISIBLE || child.width <= 0 || child.height <= 0) continue
         val left = child.left + child.translationX
         val top = child.top + child.translationY
         if (left < -OVERFLOW_SLOP || top < -OVERFLOW_SLOP ||
@@ -173,6 +174,7 @@ private class Target(val view: View) {
     private var wholeApplied: RenderEffect? = null
     private val rows = IdentityHashMap<View, Row>()
     private val seen = IdentityHashMap<View, Boolean>()
+    private val moving = Collections.newSetFromMap(IdentityHashMap<View, Boolean>())
     private var ready = false
     private var lastX = 0f
     private var lastY = 0f
@@ -247,32 +249,40 @@ private class Target(val view: View) {
     private fun updateRows(horizontal: Boolean, effect: RenderEffect, now: Long): Int {
         val group = container() ?: return 0
         seen.clear()
-        var blurred = 0
+        moving.clear()
+        var blocked = false
         for (index in 0 until group.childCount) {
             val child = group.getChildAt(index) ?: continue
-            if (child.visibility != View.VISIBLE) continue
+            if (child.visibility != View.VISIBLE || child.width <= 0 || child.height <= 0) continue
             child.getLocationInWindow(location)
             val position = if (horizontal) location[0] else location[1]
             val row = rows[child] ?: Row(position).also { rows[child] = it }
             if (position != row.last) row.movedAt = now
             row.last = position
-            val moving = now - row.movedAt <= MOVE_HOLD_MS
-            val wanted = if (moving && !spills(child)) effect else null
+            seen[child] = true
+            if (now - row.movedAt > MOVE_HOLD_MS) continue
+            if (spills(child)) blocked = true
+            moving += child
+        }
+        var blurred = 0
+        val iterator = rows.entries.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            val child = entry.key
+            val row = entry.value
+            if (!seen.containsKey(child)) {
+                if (row.applied != null) child.setRenderEffect(null)
+                iterator.remove()
+                continue
+            }
+            val wanted = if (!blocked && child in moving) effect else null
             if (row.applied !== wanted) {
                 child.setRenderEffect(wanted)
                 row.applied = wanted
             }
             if (wanted != null) blurred++
-            seen[child] = true
         }
-        val iterator = rows.entries.iterator()
-        while (iterator.hasNext()) {
-            val entry = iterator.next()
-            if (seen.containsKey(entry.key)) continue
-            if (entry.value.applied != null) entry.key.setRenderEffect(null)
-            iterator.remove()
-        }
-        return blurred
+        return if (blocked) 0 else blurred
     }
 
     private fun clearRows() {
