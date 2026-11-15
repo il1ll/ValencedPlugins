@@ -203,13 +203,26 @@
       "author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
       "icon": "SparklesIcon",
       "channels": {
-        "latest": "1.0.0"
+        "latest": "1.3.0"
       },
       "versions": {
         "1.0.0": {
           "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.motionblur@1.0.0.zip",
           "sha256": "95b3ab4999a45d207f25b5dd4863bd71c2c61c3aa935410f924f216e40f4da5a",
           "size": 16105,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        },
+        "1.3.0": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.motionblur@1.3.0.zip",
+          "sha256": "cf39db5bd478784233e82bdf0b7dd3d0507642f50dc9e68344bb7aee0bc9eee0",
+          "size": 18643,
           "dependencies": {
             "valenced.api": {
               "version": ">=1 <2"
