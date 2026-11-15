@@ -41,10 +41,15 @@ private const val FALL_MS = 55f
 private const val SETTLE = 0.2f
 private const val MAX_GAP_MS = 200L
 private const val MAX_STEP_MS = 64L
-private const val SCAN_INTERVAL_MS = 500L
-private const val WINDOW_INTERVAL_MS = 1_000L
-private const val MAX_DEPTH = 96
-private const val MAX_NODES = 6_000
+private const val SCAN_INTERVAL_MS = 250L
+private const val WINDOW_INTERVAL_MS = 250L
+private const val SCROLL_IDLE_MS = 300L
+private const val FAST_SCAN_MS = 100L
+private const val MAX_DEPTH = 512
+private const val MAX_NODES = 60_000
+private const val MAX_WRAPPERS = 3
+private const val MOVE_HOLD_MS = 80L
+private const val OVERFLOW_SLOP = 1f
 
 private val TARGET_NAMES = setOf(
     "RecyclerView",
@@ -134,16 +139,45 @@ private class Signal {
     }
 }
 
+private class Row(var last: Int) {
+    var movedAt = 0L
+    var applied: RenderEffect? = null
+}
+
+private fun spills(view: View): Boolean {
+    val width = view.width
+    val height = view.height
+    if (width <= 0 || height <= 0) return true
+    if (view !is ViewGroup) return false
+    for (index in 0 until view.childCount) {
+        val child = view.getChildAt(index) ?: continue
+        if (child.visibility != View.VISIBLE) continue
+        val left = child.left + child.translationX
+        val top = child.top + child.translationY
+        if (left < -OVERFLOW_SLOP || top < -OVERFLOW_SLOP ||
+            left + child.width > width + OVERFLOW_SLOP ||
+            top + child.height > height + OVERFLOW_SLOP
+        ) {
+            return true
+        }
+    }
+    return false
+}
+
 private class Target(val view: View) {
     private val signal = Signal()
     private val visible = Rect()
+    private val location = IntArray(2)
     private val cache = Array(2) { arrayOfNulls<RenderEffect>(MAX_LEVEL + 1) }
+    private val wholeCache = Array(2) { arrayOfNulls<RenderEffect>(MAX_LEVEL + 1) }
+    private var wholeApplied: RenderEffect? = null
+    private val rows = IdentityHashMap<View, Row>()
+    private val seen = IdentityHashMap<View, Boolean>()
     private var ready = false
     private var lastX = 0f
     private var lastY = 0f
     var level = 0
         private set
-    private var axis = -1
 
     fun frame(now: Long) {
         if (!Config.enabled || !view.isAttachedToWindow || !view.isShown ||
@@ -162,33 +196,94 @@ private class Target(val view: View) {
 
         val density = view.resources.displayMetrics.density
         signal.step(dx, dy, now, density, Config.strength)
-        val next = signal.level()
-        val horizontal = signal.horizontal()
-        val nextAxis = if (horizontal) 0 else 1
-        if (next == level && nextAxis == axis) return
-
-        level = next
-        axis = nextAxis
-        if (next == 0) {
-            view.setRenderEffect(null)
+        level = signal.level()
+        if (level == 0) {
+            clearRows()
+            setWhole(null)
             return
         }
-        val effect = cache[nextAxis][next] ?: run {
-            val main = next * LEVEL_STEP * density
+        val horizontal = signal.horizontal()
+        val axis = if (horizontal) 0 else 1
+        val effect = cache[axis][level] ?: run {
+            val main = level * LEVEL_STEP * density
+            val cross = max(MIN_CROSS_RADIUS, main * CROSS_RATIO)
+            RenderEffect.createBlurEffect(
+                if (horizontal) main else cross,
+                if (horizontal) cross else main,
+                Shader.TileMode.DECAL,
+            ).also { cache[axis][level] = it }
+        }
+        val blurred = updateRows(horizontal, effect, now)
+        setWhole(if (blurred == 0) wholeEffect(horizontal, axis, density) else null)
+    }
+
+    private fun wholeEffect(horizontal: Boolean, axis: Int, density: Float): RenderEffect =
+        wholeCache[axis][level] ?: run {
+            val main = level * LEVEL_STEP * density
             val cross = max(MIN_CROSS_RADIUS, main * CROSS_RATIO)
             RenderEffect.createBlurEffect(
                 if (horizontal) main else cross,
                 if (horizontal) cross else main,
                 Shader.TileMode.CLAMP,
-            ).also { cache[nextAxis][next] = it }
+            ).also { wholeCache[axis][level] = it }
         }
+
+    private fun setWhole(effect: RenderEffect?) {
+        if (wholeApplied === effect) return
         view.setRenderEffect(effect)
+        wholeApplied = effect
+    }
+
+    private fun container(): ViewGroup? {
+        var group = view as? ViewGroup ?: return null
+        var depth = 0
+        while (depth < MAX_WRAPPERS && group.childCount == 1) {
+            group = group.getChildAt(0) as? ViewGroup ?: break
+            depth++
+        }
+        return group
+    }
+
+    private fun updateRows(horizontal: Boolean, effect: RenderEffect, now: Long): Int {
+        val group = container() ?: return 0
+        seen.clear()
+        var blurred = 0
+        for (index in 0 until group.childCount) {
+            val child = group.getChildAt(index) ?: continue
+            if (child.visibility != View.VISIBLE) continue
+            child.getLocationInWindow(location)
+            val position = if (horizontal) location[0] else location[1]
+            val row = rows[child] ?: Row(position).also { rows[child] = it }
+            if (position != row.last) row.movedAt = now
+            row.last = position
+            val moving = now - row.movedAt <= MOVE_HOLD_MS
+            val wanted = if (moving && !spills(child)) effect else null
+            if (row.applied !== wanted) {
+                child.setRenderEffect(wanted)
+                row.applied = wanted
+            }
+            if (wanted != null) blurred++
+            seen[child] = true
+        }
+        val iterator = rows.entries.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            if (seen.containsKey(entry.key)) continue
+            if (entry.value.applied != null) entry.key.setRenderEffect(null)
+            iterator.remove()
+        }
+        return blurred
+    }
+
+    private fun clearRows() {
+        for ((child, row) in rows) if (row.applied != null) child.setRenderEffect(null)
+        rows.clear()
     }
 
     fun clear() {
-        if (level > 0) view.setRenderEffect(null)
+        clearRows()
+        setWhole(null)
         level = 0
-        axis = -1
         ready = false
         signal.reset()
     }
@@ -198,7 +293,12 @@ private class Watch(val root: View) {
     private val targets = IdentityHashMap<View, Target>()
     private var dirty = true
     private var lastScan = 0L
+    private var lastScroll = 0L
     private var closed = false
+
+    private val scrollListener = ViewTreeObserver.OnScrollChangedListener {
+        if (!closed) scrolled()
+    }
 
     private val layoutListener = ViewTreeObserver.OnGlobalLayoutListener { dirty = true }
 
@@ -210,6 +310,15 @@ private class Watch(val root: View) {
     init {
         root.viewTreeObserver.addOnGlobalLayoutListener(layoutListener)
         root.viewTreeObserver.addOnPreDrawListener(drawListener)
+        root.viewTreeObserver.addOnScrollChangedListener(scrollListener)
+    }
+
+    private fun scrolled() {
+        val now = SystemClock.uptimeMillis()
+        val idle = now - lastScroll > SCROLL_IDLE_MS
+        lastScroll = now
+        if (idle || (dirty && now - lastScan >= FAST_SCAN_MS)) scan(now)
+        root.postInvalidateOnAnimation()
     }
 
     private fun draw() {
@@ -227,16 +336,24 @@ private class Watch(val root: View) {
         dirty = false
         lastScan = now
         val found = IdentityHashMap<View, Boolean>()
+        val views = ArrayDeque<View>()
+        val depths = ArrayDeque<Int>()
+        views.addLast(root)
+        depths.addLast(0)
         var visited = 0
-        fun walk(view: View, depth: Int) {
-            if (visited++ > MAX_NODES || depth > MAX_DEPTH) return
-            if (view.visibility != View.VISIBLE) return
+        while (views.isNotEmpty() && visited < MAX_NODES) {
+            val view = views.removeLast()
+            val depth = depths.removeLast()
+            visited++
+            if (view.visibility != View.VISIBLE || view.alpha == 0f) continue
             if (isTarget(view)) found[view] = true
-            if (view is ViewGroup) {
-                for (index in 0 until view.childCount) walk(view.getChildAt(index), depth + 1)
+            if (view !is ViewGroup || depth >= MAX_DEPTH) continue
+            for (index in view.childCount - 1 downTo 0) {
+                val child = view.getChildAt(index) ?: continue
+                views.addLast(child)
+                depths.addLast(depth + 1)
             }
         }
-        walk(root, 0)
 
         val iterator = targets.entries.iterator()
         while (iterator.hasNext()) {
@@ -268,6 +385,7 @@ private class Watch(val root: View) {
         if (observer.isAlive) {
             observer.removeOnGlobalLayoutListener(layoutListener)
             observer.removeOnPreDrawListener(drawListener)
+            observer.removeOnScrollChangedListener(scrollListener)
         }
     }
 }
