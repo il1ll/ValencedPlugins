@@ -1,0 +1,27 @@
+{
+	"format": 1,
+	"id": "com.coder.textanimation",
+	"name": "Text Animation",
+	"description": "Animates letters as you type and delete, with a smooth gliding cursor and arabic support!",
+	"author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
+	"contributors": [
+		"bleelblep"
+	],
+	"icon": "TextIcon",
+	"version": "0.3.1",
+	"dependencies": {
+		"valenced.api": {
+			"version": ">=1 <2"
+		},
+		"discord": {
+			"version": "*"
+		}
+	},
+	"dist": {
+		"script": "index.js",
+		"android": {
+			"path": "plugin.jar",
+			"class": "com.coder.textanimation.TextAnimationPlugin"
+		}
+	}
+}
