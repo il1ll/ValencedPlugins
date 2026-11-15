@@ -323,7 +323,28 @@ private class BubbleController(private val context: Context) {
     }
 }
 
+private const val REGISTRY_KEY = "com.coder.mutebubble.active"
+
 private var controller: BubbleController? = null
+
+private fun replacePreviousInstance(next: BubbleController) {
+    val properties = System.getProperties()
+    (properties[REGISTRY_KEY] as? Runnable)?.let {
+        try {
+            it.run()
+        } catch (_: Throwable) {
+        }
+    }
+    properties[REGISTRY_KEY] = Runnable {
+        next.detach()
+        next.actions.trySend("stop")
+    }
+}
+
+private fun clearRegistry(current: BubbleController?) {
+    val properties = System.getProperties()
+    if (current != null && properties[REGISTRY_KEY] != null) properties.remove(REGISTRY_KEY)
+}
 
 private fun currentApplication(): Context? =
     try {
@@ -338,6 +359,7 @@ private fun ensureController(context: Context? = null): BubbleController? {
     controller?.let { return it }
     val appContext = (context ?: currentApplication())?.applicationContext ?: return null
     return BubbleController(appContext).also {
+        replacePreviousInstance(it)
         controller = it
         it.attach(null)
     }
@@ -385,6 +407,7 @@ val muteBubble = plugin {
     stop {
         controller?.detach()
         controller?.actions?.trySend("stop")
+        clearRegistry(controller)
         controller = null
     }
 }
