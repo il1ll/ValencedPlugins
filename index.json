@@ -112,6 +112,30 @@
         }
       }
     },
+    "com.coder.filepreview": {
+      "name": "File Preview",
+      "description": "A Preview button on .zip and text files.",
+      "author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
+      "icon": "FolderIcon",
+      "channels": {
+        "latest": "1.3.0"
+      },
+      "versions": {
+        "1.3.0": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.filepreview@1.3.0.zip",
+          "sha256": "397ec42d12358d96dbe7880a6c4f6e6e3221a6c43a48ebd89badaae76d1c78ce",
+          "size": 25205,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
     "com.coder.hypesquad-switcher": {
       "name": "HypeSquad Switcher",
       "description": "Add, change, or remove your HypeSquad badge from the plugin settings.",
