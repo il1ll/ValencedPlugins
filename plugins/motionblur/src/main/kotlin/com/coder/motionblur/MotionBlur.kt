@@ -50,7 +50,11 @@ private const val MAX_DEPTH = 512
 private const val MAX_NODES = 60_000
 private const val MAX_WRAPPERS = 3
 private const val MOVE_HOLD_MS = 80L
-private const val OVERFLOW_SLOP = 1f
+private const val MIN_ROW_MOVE_PX = 3
+private const val FOLLOW_RATIO = 0.5f
+private const val MAX_OVERFLOW = 0.15f
+private const val OVERFLOW_DEPTH = 4
+private const val OVERFLOW_NODES = 300
 
 private val TARGET_NAMES = setOf(
     "RecyclerView",
@@ -145,24 +149,43 @@ private class Row(var last: Int) {
     var applied: RenderEffect? = null
 }
 
-private fun spills(view: View): Boolean {
-    val width = view.width
-    val height = view.height
-    if (width <= 0 || height <= 0) return true
-    if (view !is ViewGroup) return false
-    for (index in 0 until view.childCount) {
-        val child = view.getChildAt(index) ?: continue
-        if (child.visibility != View.VISIBLE || child.width <= 0 || child.height <= 0) continue
-        val left = child.left + child.translationX
-        val top = child.top + child.translationY
-        if (left < -OVERFLOW_SLOP || top < -OVERFLOW_SLOP ||
-            left + child.width > width + OVERFLOW_SLOP ||
-            top + child.height > height + OVERFLOW_SLOP
-        ) {
-            return true
+private class Overflow {
+    private var left = 0f
+    private var top = 0f
+    private var right = 0f
+    private var bottom = 0f
+    private var nodes = 0
+
+    fun ratio(view: View): Float {
+        val width = view.width.toFloat()
+        val height = view.height.toFloat()
+        if (width <= 0f || height <= 0f) return 1f
+        left = 0f
+        top = 0f
+        right = width
+        bottom = height
+        nodes = 0
+        visit(view, 0f, 0f, 0)
+        val spillX = (right - left - width) / (right - left)
+        val spillY = (bottom - top - height) / (bottom - top)
+        return max(spillX, spillY)
+    }
+
+    private fun visit(view: View, offsetX: Float, offsetY: Float, depth: Int) {
+        if (view !is ViewGroup || depth >= OVERFLOW_DEPTH) return
+        for (index in 0 until view.childCount) {
+            if (++nodes > OVERFLOW_NODES) return
+            val child = view.getChildAt(index) ?: continue
+            if (child.visibility != View.VISIBLE || child.width <= 0 || child.height <= 0 || child.alpha == 0f) continue
+            val x = offsetX + child.left + child.translationX - view.scrollX
+            val y = offsetY + child.top + child.translationY - view.scrollY
+            left = min(left, x)
+            top = min(top, y)
+            right = max(right, x + child.width)
+            bottom = max(bottom, y + child.height)
+            visit(child, x, y, depth + 1)
         }
     }
-    return false
 }
 
 private class Target(val view: View) {
@@ -174,6 +197,7 @@ private class Target(val view: View) {
     private var wholeApplied: RenderEffect? = null
     private val rows = IdentityHashMap<View, Row>()
     private val seen = IdentityHashMap<View, Boolean>()
+    private val overflow = Overflow()
     private val moving = Collections.newSetFromMap(IdentityHashMap<View, Boolean>())
     private var ready = false
     private var lastX = 0f
@@ -215,8 +239,8 @@ private class Target(val view: View) {
                 Shader.TileMode.DECAL,
             ).also { cache[axis][level] = it }
         }
-        val blurred = updateRows(horizontal, effect, now)
-        setWhole(if (blurred == 0) wholeEffect(horizontal, axis, density) else null)
+        val whole = updateRows(horizontal, effect, now, if (horizontal) dx else dy)
+        setWhole(if (whole) wholeEffect(horizontal, axis, density) else null)
     }
 
     private fun wholeEffect(horizontal: Boolean, axis: Int, density: Float): RenderEffect =
@@ -246,25 +270,26 @@ private class Target(val view: View) {
         return group
     }
 
-    private fun updateRows(horizontal: Boolean, effect: RenderEffect, now: Long): Int {
-        val group = container() ?: return 0
+    private fun updateRows(horizontal: Boolean, effect: RenderEffect, now: Long, scrolled: Float): Boolean {
+        val follow = max(MIN_ROW_MOVE_PX.toFloat(), abs(scrolled) * FOLLOW_RATIO)
+        val group = container() ?: return true
         seen.clear()
         moving.clear()
-        var blocked = false
+
         for (index in 0 until group.childCount) {
             val child = group.getChildAt(index) ?: continue
             if (child.visibility != View.VISIBLE || child.width <= 0 || child.height <= 0) continue
             child.getLocationInWindow(location)
             val position = if (horizontal) location[0] else location[1]
             val row = rows[child] ?: Row(position).also { rows[child] = it }
-            if (position != row.last) row.movedAt = now
+            if (abs(position - row.last) >= follow) row.movedAt = now
             row.last = position
             seen[child] = true
             if (now - row.movedAt > MOVE_HOLD_MS) continue
-            if (spills(child)) blocked = true
+            if (overflow.ratio(child) > MAX_OVERFLOW) continue
             moving += child
         }
-        var blurred = 0
+        val whole = seen.isEmpty()
         val iterator = rows.entries.iterator()
         while (iterator.hasNext()) {
             val entry = iterator.next()
@@ -275,14 +300,13 @@ private class Target(val view: View) {
                 iterator.remove()
                 continue
             }
-            val wanted = if (!blocked && child in moving) effect else null
+            val wanted = if (!whole && child in moving) effect else null
             if (row.applied !== wanted) {
                 child.setRenderEffect(wanted)
                 row.applied = wanted
             }
-            if (wanted != null) blurred++
         }
-        return if (blocked) 0 else blurred
+        return whole
     }
 
     private fun clearRows() {
