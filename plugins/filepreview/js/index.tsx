@@ -323,6 +323,11 @@ function previewFromEvent(handlers: any, event: unknown): boolean {
 
 const patchedHandlers = new WeakSet<object>()
 
+function tapWrapper(this: unknown, args: any[], original: any) {
+	if (previewFromEvent(this, args[0])) return
+	return Reflect.apply(original, this, args)
+}
+
 function patchHandlers(handlers: any, cleanup: (fn: () => void) => void) {
 	if (
 		!handlers ||
@@ -332,18 +337,38 @@ function patchHandlers(handlers: any, cleanup: (fn: () => void) => void) {
 		return
 	patchedHandlers.add(handlers)
 	for (const key of TAP_HANDLERS)
-		if (typeof handlers[key] === 'function')
-			cleanup(
-				instead(handlers, key, function (this: unknown, args, original) {
-					if (previewFromEvent(this, args[0])) return
-					return Reflect.apply(original, this, args)
-				}),
-			)
+		if (
+			Object.hasOwn(handlers, key) &&
+			typeof handlers[key] === 'function'
+		)
+			cleanup(instead(handlers, key, tapWrapper))
+}
+
+function patchPrototypeMethods(
+	prototype: any,
+	cleanup: (fn: () => void) => void,
+) {
+	for (const key of Object.getOwnPropertyNames(prototype)) {
+		if (key === 'constructor') continue
+		const descriptor = Object.getOwnPropertyDescriptor(prototype, key)
+		if (typeof descriptor?.value !== 'function') continue
+		if (TAP_HANDLERS.includes(key)) {
+			cleanup(instead(prototype, key, tapWrapper))
+			continue
+		}
+		cleanup(
+			instead(prototype, key, function (this: unknown, args, original) {
+				patchHandlers(this, cleanup)
+				return Reflect.apply(original, this, args)
+			}),
+		)
+	}
 }
 
 function patchHandlersClass(module: any, cleanup: (fn: () => void) => void) {
 	const prototype = module?.MessagesHandlers?.prototype
 	if (!prototype) return
+	patchPrototypeMethods(prototype, cleanup)
 	const descriptor = Object.getOwnPropertyDescriptor(prototype, 'params')
 	const getter = descriptor?.get
 	if (!descriptor || !getter) return
@@ -351,7 +376,9 @@ function patchHandlersClass(module: any, cleanup: (fn: () => void) => void) {
 		...descriptor,
 		get(this: unknown) {
 			patchHandlers(this, cleanup)
-			return getter.call(this)
+			const result = getter.call(this)
+			patchHandlers(result, cleanup)
+			return result
 		},
 	})
 	cleanup(() => Object.defineProperty(prototype, 'params', descriptor))
