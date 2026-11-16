@@ -16,6 +16,7 @@ import {
 	Linking,
 	Pressable,
 	ScrollView,
+	TextInput,
 	View,
 } from 'react-native'
 import {
@@ -45,6 +46,8 @@ interface Styles {
 	headerButton: object
 	headerText: object
 	icon: object
+	search: object
+	searchInput: object
 	breadcrumb: object
 	crumb: object
 	body: object
@@ -83,6 +86,21 @@ function styles(): Styles {
 			width: 24,
 			height: 24,
 			tintColor: Tokens.default.colors.INTERACTIVE_ICON_DEFAULT,
+		},
+		search: {
+			flexDirection: 'row',
+			alignItems: 'center',
+			gap: 8,
+			marginHorizontal: 16,
+			marginTop: 10,
+			paddingHorizontal: 12,
+			borderRadius: 8,
+			backgroundColor: Tokens.default.colors.BACKGROUND_BASE_LOWER,
+		},
+		searchInput: {
+			flex: 1,
+			height: 40,
+			color: Tokens.default.colors.TEXT_DEFAULT,
 		},
 		breadcrumb: {
 			flexDirection: 'row',
@@ -153,6 +171,28 @@ function visibleEntries(entries: ZipEntry[], path: string) {
 		else directories.add(rest.slice(0, slash))
 	}
 	return { directories: [...directories].sort(), files }
+}
+
+const MAX_RESULTS = 200
+
+function searchEntries(entries: ZipEntry[], query: string) {
+	const needle = query.trim().toLowerCase()
+	const directories = new Set<string>()
+	for (const entry of entries) {
+		const parts = entry.path.split('/')
+		for (let index = 1; index < parts.length; index++)
+			directories.add(parts.slice(0, index).join('/'))
+	}
+	const nameOf = (path: string) => path.slice(path.lastIndexOf('/') + 1)
+	return {
+		directories: [...directories]
+			.filter(path => nameOf(path).toLowerCase().includes(needle))
+			.sort()
+			.slice(0, MAX_RESULTS),
+		files: entries
+			.filter(entry => entry.name.toLowerCase().includes(needle))
+			.slice(0, MAX_RESULTS),
+	}
 }
 
 function AssetButton({
@@ -291,43 +331,81 @@ function FileList({
 }) {
 	const { TableRowGroup, TableRow, Text } = Design
 	const style = styles()
+	const [query, setQuery] = useState('')
+	const searching = query.trim().length > 0
 	const { directories, files } = useMemo(
-		() => visibleEntries(listing.entries, path),
-		[listing, path],
+		() =>
+			searching
+				? searchEntries(listing.entries, query)
+				: visibleEntries(listing.entries, path),
+		[listing, path, query],
 	)
 
 	if (listing.entries.length === 0)
 		return <StateView text="This ZIP is empty." />
 
+	const openDirectory = (target: string) => {
+		setQuery('')
+		onNavigate(target)
+	}
+
 	return (
 		<>
-			<Breadcrumb path={path} onNavigate={onNavigate} />
-			<ScrollView contentContainerStyle={style.body}>
+			<View style={style.search}>
+				<TableRowAssetIcon name="MagnifyingGlassIcon" />
+				<TextInput
+					style={style.searchInput}
+					value={query}
+					onChangeText={setQuery}
+					placeholder="Search files and folders"
+					placeholderTextColor={Tokens.default.colors.TEXT_MUTED}
+					autoCapitalize="none"
+					autoCorrect={false}
+					clearButtonMode="while-editing"
+				/>
+			</View>
+			{searching ? null : <Breadcrumb path={path} onNavigate={onNavigate} />}
+			<ScrollView
+				contentContainerStyle={style.body}
+				keyboardShouldPersistTaps="handled"
+			>
 				{listing.truncated ? (
 					<Text variant="text-sm/medium" color="text-muted">
 						{`Only showing first ${MAX_ENTRIES} entries.`}
 					</Text>
 				) : null}
 				{directories.length === 0 && files.length === 0 ? (
-					<StateView text="This folder is empty." />
+					<StateView
+						text={searching ? 'No results found.' : 'This folder is empty.'}
+					/>
 				) : (
 					<TableRowGroup>
-						{directories.map(directory => (
-							<TableRow
-								key={`dir:${directory}`}
-								label={`${directory}/`}
-								icon={<TableRowAssetIcon name="FolderIcon" />}
-								arrow
-								onPress={() =>
-									onNavigate(path ? `${path}/${directory}` : directory)
-								}
-							/>
-						))}
+						{directories.map(directory => {
+							const target = searching
+								? directory
+								: path
+									? `${path}/${directory}`
+									: directory
+							return (
+								<TableRow
+									key={`dir:${target}`}
+									label={`${searching ? directory.slice(directory.lastIndexOf('/') + 1) : directory}/`}
+									subLabel={searching ? `/${target}` : undefined}
+									icon={<TableRowAssetIcon name="FolderIcon" />}
+									arrow
+									onPress={() => openDirectory(target)}
+								/>
+							)
+						})}
 						{files.map(entry => (
 							<TableRow
 								key={`file:${entry.path}`}
 								label={entry.name}
-								subLabel={formatBytes(entry.size)}
+								subLabel={
+									searching
+										? `/${entry.path} · ${formatBytes(entry.size)}`
+										: formatBytes(entry.size)
+								}
 								icon={
 									<TableRowAssetIcon
 										name={entry.kind === 'image' ? 'ImageIcon' : 'FileIcon'}
