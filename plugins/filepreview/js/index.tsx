@@ -4,7 +4,7 @@ import {
 	getModuleWithImportedPath,
 	lookupModuleWithImportedPath,
 } from '@valenced/discord/utils/modules/finders'
-import { after, instead } from '@valenced/patcher'
+import { instead } from '@valenced/patcher'
 import { errorMessage } from './native'
 import { closePreview, openTextPreview, openZipPreview } from './viewer'
 
@@ -337,11 +337,69 @@ function patchHandlers(handlers: any, cleanup: (fn: () => void) => void) {
 		return
 	patchedHandlers.add(handlers)
 	for (const key of TAP_HANDLERS)
-		if (
-			Object.hasOwn(handlers, key) &&
-			typeof handlers[key] === 'function'
-		)
+		if (Object.hasOwn(handlers, key) && typeof handlers[key] === 'function')
 			cleanup(instead(handlers, key, tapWrapper))
+}
+
+function hasTapHandler(value: any) {
+	return TAP_HANDLERS.some(key => typeof value?.[key] === 'function')
+}
+
+function scanForHandlers(
+	root: any,
+	cleanup: (fn: () => void) => void,
+	depth = 3,
+) {
+	const seen = new Set<object>()
+	let budget = 300
+	const visit = (value: any, level: number) => {
+		if (!value || typeof value !== 'object' || seen.has(value) || budget <= 0)
+			return
+		seen.add(value)
+		budget--
+		if (hasTapHandler(value)) patchHandlers(value, cleanup)
+		if (level >= depth) return
+		let keys: string[] = []
+		try {
+			keys = Object.getOwnPropertyNames(value)
+		} catch {}
+		for (const key of keys) {
+			let child: unknown
+			try {
+				child = value[key]
+			} catch {
+				continue
+			}
+			if (child && typeof child === 'object') visit(child, level + 1)
+		}
+	}
+	visit(root, 0)
+}
+
+function patchEventEmitter(cleanup: (fn: () => void) => void) {
+	const bridge = (globalThis as any).__fbBatchedBridge
+	let emitter: any
+	try {
+		emitter = bridge?.getCallableModule?.('RCTEventEmitter')
+	} catch {}
+	if (typeof emitter?.receiveEvent !== 'function') return
+	cleanup(
+		instead(emitter, 'receiveEvent', function (this: unknown, args, original) {
+			const [, type, nativeEvent] = args as [unknown, unknown, any]
+			if (
+				typeof type === 'string' &&
+				/invite/i.test(type) &&
+				nativeEvent &&
+				typeof nativeEvent.messageId !== 'undefined' &&
+				Number.isInteger(Number(nativeEvent.index))
+			) {
+				try {
+					if (previewFromEvent(undefined, { nativeEvent })) return
+				} catch {}
+			}
+			return Reflect.apply(original, this, args)
+		}),
+	)
 }
 
 function patchPrototypeMethods(
@@ -358,7 +416,7 @@ function patchPrototypeMethods(
 		}
 		cleanup(
 			instead(prototype, key, function (this: unknown, args, original) {
-				patchHandlers(this, cleanup)
+				scanForHandlers(this, cleanup, 2)
 				return Reflect.apply(original, this, args)
 			}),
 		)
@@ -407,12 +465,20 @@ export default plugin({
 				const prototype = module?.default?.prototype
 				if (typeof prototype?.generate !== 'function') return
 				cleanup(
-					after(prototype, 'generate', (row: any) => {
-						try {
-							patchRows(row?.message)
-						} catch {}
-						return row
-					}),
+					instead(
+						prototype,
+						'generate',
+						function (this: unknown, args, original) {
+							try {
+								scanForHandlers(this, cleanup)
+							} catch {}
+							const row: any = Reflect.apply(original, this, args)
+							try {
+								patchRows(row?.message)
+							} catch {}
+							return row
+						},
+					),
 				)
 			}),
 		)
@@ -422,6 +488,8 @@ export default plugin({
 				patchHandlersClass(module, cleanup),
 			),
 		)
+
+		patchEventEmitter(cleanup)
 
 		cleanup(() => offsets.clear())
 		cleanup(closePreview)
