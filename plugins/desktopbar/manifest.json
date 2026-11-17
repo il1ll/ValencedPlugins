@@ -1,0 +1,20 @@
+{
+	"format": 1,
+	"id": "com.coder.desktopbar",
+	"name": "Desktop Bar",
+	"description": "Adds mute, deafen and settings buttons to the You Bar like desktop.",
+	"icon": "SettingsIcon",
+	"author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
+	"version": "1.5.0",
+	"dependencies": {
+		"valenced.api": {
+			"version": ">=1 <2"
+		},
+		"discord": {
+			"version": "*"
+		}
+	},
+	"dist": {
+		"script": "index.js"
+	}
+}
