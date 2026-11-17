@@ -21,6 +21,7 @@ import app.valenced.plugins.plugin
 import app.valenced.xposed.api.registerNativeAsyncMethod
 import java.lang.ref.WeakReference
 import java.lang.reflect.Method
+import java.util.Arrays
 import java.util.Collections
 import java.util.IdentityHashMap
 import kotlin.math.abs
@@ -40,6 +41,9 @@ private const val STRENGTH_SCALE = 0.32f
 private const val RISE_MS = 24f
 private const val FALL_MS = 55f
 private const val SETTLE = 0.2f
+private const val VELOCITY_MS = 70f
+private const val ON_LEVEL = 3
+private const val ON_DELAY_MS = 40L
 private const val MAX_GAP_MS = 200L
 private const val MAX_STEP_MS = 64L
 private const val SCAN_INTERVAL_MS = 250L
@@ -49,7 +53,7 @@ private const val FAST_SCAN_MS = 100L
 private const val MAX_DEPTH = 512
 private const val MAX_NODES = 60_000
 private const val MAX_WRAPPERS = 3
-private const val MOVE_HOLD_MS = 80L
+private const val MOVE_HOLD_MS = 160L
 private const val MIN_ROW_MOVE_PX = 3
 private const val FOLLOW_RATIO = 0.5f
 private const val MAX_OVERFLOW = 0.15f
@@ -102,6 +106,10 @@ private class Signal {
         private set
     private var initialized = false
     private var last = 0L
+    private var speedX = 0f
+    private var speedY = 0f
+    private var active = false
+    private var aboveSince = -1L
 
     fun step(dx: Float, dy: Float, now: Long, density: Float, strength: Int) {
         if (!initialized) {
@@ -115,13 +123,20 @@ private class Signal {
         if (dt > MAX_GAP_MS || strength <= 0) {
             x = 0f
             y = 0f
+            speedX = 0f
+            speedY = 0f
+            active = false
+            aboveSince = -1L
             return
         }
         val stepMs = min(MAX_STEP_MS, dt).toFloat()
         val scale = max(0.5f, density)
         val gain = strength.coerceIn(0, 100) * STRENGTH_SCALE
-        val vx = abs(dx) / scale / dt
-        val vy = abs(dy) / scale / dt
+        val smoothing = 1f - exp(-stepMs / VELOCITY_MS)
+        speedX += (abs(dx) / scale / dt - speedX) * smoothing
+        speedY += (abs(dy) / scale / dt - speedY) * smoothing
+        val vx = speedX
+        val vy = speedY
         val tx = if (vx < MIN_VELOCITY) 0f else min(MAX_TARGET, vx * gain)
         val ty = if (vy < MIN_VELOCITY) 0f else min(MAX_TARGET, vy * gain)
         val ax = 1f - exp(-stepMs / (if (tx > x) RISE_MS else FALL_MS))
@@ -132,19 +147,33 @@ private class Signal {
         if (y < SETTLE) y = 0f
     }
 
-    fun level(): Int = min(MAX_LEVEL, (max(x, y) / LEVEL_STEP).roundToInt())
+    fun level(now: Long): Int {
+        val raw = min(MAX_LEVEL, (max(x, y) / LEVEL_STEP).roundToInt())
+        if (raw >= ON_LEVEL) {
+            if (aboveSince < 0) aboveSince = now
+            if (now - aboveSince >= ON_DELAY_MS) active = true
+        } else {
+            aboveSince = -1L
+        }
+        if (raw == 0) active = false
+        return if (active) raw else 0
+    }
 
     fun horizontal(): Boolean = x > y
 
     fun reset() {
         x = 0f
         y = 0f
+        speedX = 0f
+        speedY = 0f
+        active = false
+        aboveSince = -1L
         initialized = false
         last = 0L
     }
 }
 
-private class Row(var last: Int) {
+private class Row(var anchor: Int) {
     var movedAt = 0L
     var applied: RenderEffect? = null
 }
@@ -199,6 +228,11 @@ private class Target(val view: View) {
     private val seen = IdentityHashMap<View, Boolean>()
     private val overflow = Overflow()
     private val moving = Collections.newSetFromMap(IdentityHashMap<View, Boolean>())
+    private val positions = IdentityHashMap<View, IntArray>()
+    private val present = IdentityHashMap<View, Boolean>()
+    private var shiftsX = FloatArray(16)
+    private var shiftsY = FloatArray(16)
+    private var shiftCount = 0
     private var ready = false
     private var lastX = 0f
     private var lastY = 0f
@@ -214,15 +248,16 @@ private class Target(val view: View) {
         }
         val x = offset(horizontalOffset, view, view.scrollX)
         val y = offset(verticalOffset, view, view.scrollY)
-        val dx = if (ready) x - lastX else 0f
-        val dy = if (ready) y - lastY else 0f
+        val measured = measureShift()
+        val dx = if (measured) median(shiftsX) else if (ready) x - lastX else 0f
+        val dy = if (measured) median(shiftsY) else if (ready) y - lastY else 0f
         lastX = x
         lastY = y
         ready = true
 
         val density = view.resources.displayMetrics.density
         signal.step(dx, dy, now, density, Config.strength)
-        level = signal.level()
+        level = signal.level(now)
         if (level == 0) {
             clearRows()
             setWhole(null)
@@ -241,6 +276,42 @@ private class Target(val view: View) {
         }
         val whole = updateRows(horizontal, effect, now, if (horizontal) dx else dy)
         setWhole(if (whole) wholeEffect(horizontal, axis, density) else null)
+    }
+
+    private fun measureShift(): Boolean {
+        val group = container()
+        shiftCount = 0
+        present.clear()
+        if (group != null) {
+            for (index in 0 until group.childCount) {
+                val child = group.getChildAt(index) ?: continue
+                if (child.visibility != View.VISIBLE || child.width <= 0 || child.height <= 0) continue
+                child.getLocationInWindow(location)
+                present[child] = true
+                val previous = positions[child]
+                if (previous == null) {
+                    positions[child] = intArrayOf(location[0], location[1])
+                    continue
+                }
+                if (shiftCount == shiftsX.size) {
+                    shiftsX = shiftsX.copyOf(shiftCount * 2)
+                    shiftsY = shiftsY.copyOf(shiftCount * 2)
+                }
+                shiftsX[shiftCount] = (location[0] - previous[0]).toFloat()
+                shiftsY[shiftCount] = (location[1] - previous[1]).toFloat()
+                shiftCount++
+                previous[0] = location[0]
+                previous[1] = location[1]
+            }
+        }
+        val iterator = positions.keys.iterator()
+        while (iterator.hasNext()) if (!present.containsKey(iterator.next())) iterator.remove()
+        return shiftCount > 0
+    }
+
+    private fun median(values: FloatArray): Float {
+        Arrays.sort(values, 0, shiftCount)
+        return values[shiftCount / 2]
     }
 
     private fun wholeEffect(horizontal: Boolean, axis: Int, density: Float): RenderEffect =
@@ -282,8 +353,10 @@ private class Target(val view: View) {
             child.getLocationInWindow(location)
             val position = if (horizontal) location[0] else location[1]
             val row = rows[child] ?: Row(position).also { rows[child] = it }
-            if (abs(position - row.last) >= follow) row.movedAt = now
-            row.last = position
+            if (abs(position - row.anchor) >= follow) {
+                row.movedAt = now
+                row.anchor = position
+            }
             seen[child] = true
             if (now - row.movedAt > MOVE_HOLD_MS) continue
             if (overflow.ratio(child) > MAX_OVERFLOW) continue
@@ -315,6 +388,7 @@ private class Target(val view: View) {
     }
 
     fun clear() {
+        positions.clear()
         clearRows()
         setWhole(null)
         level = 0
