@@ -88,6 +88,30 @@
         }
       }
     },
+    "com.coder.desktopbar": {
+      "name": "Desktop Bar",
+      "description": "Adds mute, deafen and settings buttons to the You Bar like desktop.",
+      "author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
+      "icon": "SettingsIcon",
+      "channels": {
+        "latest": "1.5.0"
+      },
+      "versions": {
+        "1.5.0": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.desktopbar@1.5.0.zip",
+          "sha256": "8527204abe2c1eba738507fc00df4036407b21255e9e179d66920f31f30a0c7f",
+          "size": 2898,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
     "com.coder.fakemutedeafen": {
       "name": "Fake Mute & Deafen",
       "description": "look muted or deafened to others while you can still talk and hear.",
