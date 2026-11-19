@@ -112,6 +112,30 @@
         }
       }
     },
+    "com.coder.doubleedit": {
+      "name": "DoubleEdit",
+      "description": "Double tap your own messages to edit them.",
+      "author": "coder.gg <1099039269391171765> (https://il1ll.github.io \"Website\") (https://github.com/il1ll \"GitHub\")",
+      "icon": "PencilIcon",
+      "channels": {
+        "latest": "1.1.1"
+      },
+      "versions": {
+        "1.1.1": {
+          "url": "https://il1ll.github.io/ValencedPlugins/pool/com.coder.doubleedit@1.1.1.zip",
+          "sha256": "c253949dfb193869c0f8732f96be9bdcbd32758115317e653b2e9a4267698b69",
+          "size": 1343,
+          "dependencies": {
+            "valenced.api": {
+              "version": ">=1 <2"
+            },
+            "discord": {
+              "version": "*"
+            }
+          }
+        }
+      }
+    },
     "com.coder.fakemutedeafen": {
       "name": "Fake Mute & Deafen",
       "description": "look muted or deafened to others while you can still talk and hear.",
